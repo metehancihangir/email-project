@@ -89,4 +89,13 @@ public class AdminController : ControllerBase
         var campaigns = await _adminService.GetCampaignsAsync();
         return Ok(campaigns);
     }
+
+    [Authorize]
+    [HttpGet("campaigns/{id}/stats")]
+    public async Task<IActionResult> GetCampaignStats(int id)
+    {
+        var stats = await _adminService.GetCampaignStatsAsync(id);
+        if (stats == null) return NotFound();
+        return Ok(stats);
+    }
 }

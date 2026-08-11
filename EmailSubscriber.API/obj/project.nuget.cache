@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "y48+tjCWUW8=",
+  "dgSpecHash": "tUzOWOn3Lc0=",
   "success": true,
   "projectFilePath": "C:\\Users\\Metehan\\Desktop\\email-project\\EmailSubscriber.API\\EmailSubscriber.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Metehan\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\bouncycastle.cryptography\\2.5.1\\bouncycastle.cryptography.2.5.1.nupkg.sha512",
+    "C:\\Users\\Metehan\\.nuget\\packages\\htmlagilitypack\\1.12.4\\htmlagilitypack.1.12.4.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\mailkit\\4.12.1\\mailkit.4.12.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.7\\microsoft.aspnetcore.authentication.jwtbearer.9.0.7.nupkg.sha512",

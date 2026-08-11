@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "2phdDIdEOYQ=",
+  "dgSpecHash": "iGgDzlvQv6Y=",
   "success": true,
   "projectFilePath": "C:\\Users\\Metehan\\Desktop\\email-project\\EmailSubscriber.Tests\\EmailSubscriber.Tests.csproj",
   "expectedPackageFiles": [
@@ -8,6 +8,7 @@
     "C:\\Users\\Metehan\\.nuget\\packages\\bouncycastle.cryptography\\2.5.1\\bouncycastle.cryptography.2.5.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\castle.core\\5.1.1\\castle.core.5.1.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\coverlet.collector\\6.0.4\\coverlet.collector.6.0.4.nupkg.sha512",
+    "C:\\Users\\Metehan\\.nuget\\packages\\htmlagilitypack\\1.12.4\\htmlagilitypack.1.12.4.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\mailkit\\4.12.1\\mailkit.4.12.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.7\\microsoft.aspnetcore.authentication.jwtbearer.9.0.7.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\microsoft.aspnetcore.mvc.testing\\9.0.7\\microsoft.aspnetcore.mvc.testing.9.0.7.nupkg.sha512",

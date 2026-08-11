@@ -1,17 +1,12 @@
 namespace EmailSubscriber.API.Models;
 
-public class CampaignRecipient
+public class TrackedLink
 {
     public int Id { get; set; }
     public int CampaignId { get; set; }
     public int SubscriberId { get; set; }
-    public DateTime SentAt { get; set; } = DateTime.UtcNow;
-    
-    // "sent", "failed", "pending"
-    public string Status { get; set; } = "pending";
-
-    // Analitik Metrikleri
-    public DateTime? OpenedAt { get; set; }
+    public required string OriginalUrl { get; set; }
+    public required string LinkToken { get; set; }
     public DateTime? ClickedAt { get; set; }
 
     // Navigation Properties
