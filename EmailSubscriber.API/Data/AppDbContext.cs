@@ -8,11 +8,19 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<Subscriber> Subscribers => Set<Subscriber>();
-    public DbSet<Campaign> Campaigns => Set<Campaign>();
-    public DbSet<CampaignRecipient> CampaignRecipients => Set<CampaignRecipient>();
+    public DbSet<Campaign> Campaigns { get; set; }
+    public DbSet<CampaignRecipient> CampaignRecipients { get; set; }
+    public DbSet<TrackedLink> TrackedLinks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<TrackedLink>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.OriginalUrl).IsRequired().HasMaxLength(2048);
+            entity.Property(t => t.LinkToken).IsRequired().HasMaxLength(64);
+            entity.HasIndex(t => t.LinkToken).IsUnique();
+        });
         modelBuilder.Entity<Subscriber>(entity =>
         {
             entity.HasKey(s => s.Id);
