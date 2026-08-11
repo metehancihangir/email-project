@@ -14,4 +14,5 @@ public interface IAdminService
     // Newsletter & Campaigns
     Task<(int campaignId, int recipientCount)> SendNewsletterAsync(string subject, string htmlBody);
     Task<IEnumerable<EmailSubscriber.API.DTOs.CampaignDto>> GetCampaignsAsync();
+    Task<EmailSubscriber.API.DTOs.CampaignStatsDto?> GetCampaignStatsAsync(int id);
 }

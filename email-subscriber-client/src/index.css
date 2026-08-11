@@ -30,3 +30,35 @@ body {
   background-color: var(--color-surface);
   color: var(--color-text);
 }
+
+/* ─── Quill Editor Override ───────────────────────────────────── */
+.newsletter-editor {
+  display: flex;
+  flex-direction: column;
+}
+.newsletter-editor .ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.newsletter-editor .ql-container.ql-snow {
+  border: none;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  min-height: 250px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.newsletter-editor .ql-editor {
+  min-height: 250px;
+  max-height: 500px;
+  overflow-y: auto;
+  font-family: inherit;
+  font-size: 1rem;
+}

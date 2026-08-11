@@ -62,7 +62,7 @@ try
         options.AddFixedWindowLimiter("Api", opt =>
         {
             opt.Window = TimeSpan.FromMinutes(1);
-            opt.PermitLimit = 3;
+            opt.PermitLimit = 100;
             opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
             opt.QueueLimit = 0; // Kuyrukta bekleme yok, direkt reddet.
         });

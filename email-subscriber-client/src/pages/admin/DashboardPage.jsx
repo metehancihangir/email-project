@@ -6,17 +6,20 @@ import { motion } from 'framer-motion';
 export default function DashboardPage() {
   const [stats, setStats] = useState({ total: 0, active: 0, unconfirmed: 0, today: 0 });
   const [growthData, setGrowthData] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, growthRes] = await Promise.all([
+        const [statsRes, growthRes, campaignsRes] = await Promise.all([
           api.get('/api/admin/stats'),
-          api.get('/api/admin/subscribers/growth')
+          api.get('/api/admin/subscribers/growth'),
+          api.get('/api/admin/campaigns')
         ]);
         setStats(statsRes.data);
         setGrowthData(growthRes.data);
+        setCampaigns(campaignsRes.data.slice(0, 5)); // Sadece son 5 kampanyayı al
       } catch (err) {
         console.error("Dashboard veri hatası:", err);
       } finally {
@@ -87,7 +90,7 @@ export default function DashboardPage() {
 
       <div className="bg-surface p-6 rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-text">Son Kampanyalar (Faz 5)</h3>
+          <h3 className="text-lg font-bold text-text">Son Kampanyalar</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -100,11 +103,26 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="4" className="p-8 text-center text-gray-400">
-                  Henüz kampanya bulunmamaktadır. (Faz 5'te aktifleşecek)
-                </td>
-              </tr>
+              {campaigns.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="p-8 text-center text-gray-400">
+                    Henüz kampanya bulunmamaktadır.
+                  </td>
+                </tr>
+              ) : (
+                campaigns.map(camp => (
+                  <tr key={camp.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                    <td className="p-4 font-medium text-text">{camp.subject}</td>
+                    <td className="p-4 text-text-muted">{new Date(camp.sentAt).toLocaleDateString()}</td>
+                    <td className="p-4 text-text-muted">{camp.recipientCount}</td>
+                    <td className="p-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Gönderildi
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

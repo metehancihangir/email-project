@@ -34,16 +34,18 @@ export default function CampaignsPage() {
                 <th className="p-4">Konu</th>
                 <th className="p-4">Gönderim Tarihi</th>
                 <th className="p-4">Alıcı Sayısı</th>
+                <th className="p-4 text-center">Açılan (Oran)</th>
+                <th className="p-4 text-center">Tıklanan (Oran)</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="3" className="p-8 text-center text-gray-400">Yükleniyor...</td>
+                  <td colSpan="5" className="p-8 text-center text-gray-400">Yükleniyor...</td>
                 </tr>
               ) : campaigns.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="p-8 text-center text-gray-400">Henüz kampanya bulunmamaktadır.</td>
+                  <td colSpan="5" className="p-8 text-center text-gray-400">Henüz kampanya bulunmamaktadır.</td>
                 </tr>
               ) : (
                 <AnimatePresence>
@@ -63,6 +65,22 @@ export default function CampaignsPage() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {camp.recipientCount} Kişi
                         </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="font-semibold text-text">{camp.openedCount}</span>
+                          <span className={`text-xs px-2 py-0.5 mt-1 rounded-full ${camp.openRate > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                            %{camp.openRate}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="font-semibold text-text">{camp.clickedCount}</span>
+                          <span className={`text-xs px-2 py-0.5 mt-1 rounded-full ${camp.clickRate > 0 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
+                            %{camp.clickRate}
+                          </span>
+                        </div>
                       </td>
                     </motion.tr>
                   ))}

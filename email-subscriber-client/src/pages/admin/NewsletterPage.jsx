@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import api from '../../api/axiosInstance';
 import { motion } from 'framer-motion';
 
@@ -70,13 +70,13 @@ export default function NewsletterPage() {
 
           <div>
             <label className="block text-sm font-medium text-text-muted mb-1">İçerik (HTML)</label>
-            <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
+            <div className="bg-white rounded-xl border border-gray-200">
                <ReactQuill 
                   theme="snow" 
                   value={htmlBody} 
                   onChange={setHtmlBody} 
                   modules={modules}
-                  className="h-64"
+                  className="newsletter-editor"
                />
             </div>
           </div>

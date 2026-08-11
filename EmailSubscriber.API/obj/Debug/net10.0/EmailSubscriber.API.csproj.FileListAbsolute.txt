@@ -138,3 +138,4 @@ C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\ref
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.pdb
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.genruntimeconfig.cache
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\ref\EmailSubscriber.API.dll
+C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\HtmlAgilityPack.dll

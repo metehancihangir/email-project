@@ -134,12 +134,16 @@ public class AdminService : IAdminService
     {
         var thirtyDaysAgo = DateTime.UtcNow.Date.AddDays(-30);
 
-        var growthData = await _context.Subscribers
+        var growthDataRaw = await _context.Subscribers
             .Where(s => s.SubscribedAt >= thirtyDaysAgo)
             .GroupBy(s => s.SubscribedAt.Date)
-            .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
-            .OrderBy(x => x.date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .OrderBy(x => x.Date)
             .ToListAsync();
+
+        var growthData = growthDataRaw
+            .Select(x => new { date = x.Date.ToString("yyyy-MM-dd"), count = x.Count })
+            .ToList();
 
         return growthData;
     }
@@ -178,10 +182,42 @@ public class AdminService : IAdminService
             _context.CampaignRecipients.Add(recipient);
             await _context.SaveChangesAsync();
 
-            string unsubscribeLink = $"{host}/api/subscribers/unsubscribe?token={sub.ConfirmationToken}";
-            string bodyWithUnsubscribe = htmlBody + $"<br><br><small><a href='{unsubscribeLink}'>Abonelikten Ayrıl</a></small>";
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(htmlBody);
+            
+            var aNodes = doc.DocumentNode.SelectNodes("//a[@href]");
+            if (aNodes != null)
+            {
+                foreach (var a in aNodes)
+                {
+                    string originalHref = a.GetAttributeValue("href", "");
+                    if (!string.IsNullOrWhiteSpace(originalHref) && !originalHref.StartsWith("mailto:") && !originalHref.StartsWith("tel:"))
+                    {
+                        var linkToken = Guid.NewGuid().ToString("N");
+                        var trackedLink = new TrackedLink
+                        {
+                            CampaignId = campaign.Id,
+                            SubscriberId = sub.Id,
+                            OriginalUrl = originalHref,
+                            LinkToken = linkToken
+                        };
+                        _context.TrackedLinks.Add(trackedLink);
+                        
+                        a.SetAttributeValue("href", $"{host}/api/track/click/{linkToken}");
+                    }
+                }
+                await _context.SaveChangesAsync();
+            }
 
-            var job = new EmailSubscriber.API.Queue.EmailJob(sub.Email, sub.Name, subject, bodyWithUnsubscribe, recipient.Id);
+            string trackingPixel = $"<img src=\"{host}/api/track/open/{campaign.Id}/{sub.Id}\" width=\"1\" height=\"1\" style=\"display:none;\" />";
+            string bodyWithTracking = doc.DocumentNode.OuterHtml + trackingPixel;
+
+            var unsubToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sub.Email));
+            string frontendUrl = _configuration["App:BaseUrl"] ?? "http://localhost:5173";
+            string unsubscribeLink = $"{frontendUrl}/unsubscribe?token={unsubToken}";
+            string finalBody = bodyWithTracking + $"<br><br><small><a href='{unsubscribeLink}'>Abonelikten Ayrıl</a></small>";
+
+            var job = new EmailSubscriber.API.Queue.EmailJob(sub.Email, sub.Name, subject, finalBody, recipient.Id);
             _emailQueue.Enqueue(job);
         }
 
@@ -191,14 +227,41 @@ public class AdminService : IAdminService
     public async Task<IEnumerable<EmailSubscriber.API.DTOs.CampaignDto>> GetCampaignsAsync()
     {
         return await _context.Campaigns
+            .Include(c => c.Recipients)
             .OrderByDescending(c => c.SentAt)
             .Select(c => new EmailSubscriber.API.DTOs.CampaignDto
             {
                 Id = c.Id,
                 Subject = c.Subject,
                 SentAt = c.SentAt,
-                RecipientCount = c.RecipientCount
+                RecipientCount = c.RecipientCount,
+                OpenedCount = c.Recipients.Count(r => r.OpenedAt != null),
+                OpenRate = c.RecipientCount > 0 ? Math.Round((double)c.Recipients.Count(r => r.OpenedAt != null) / c.RecipientCount * 100, 2) : 0,
+                ClickedCount = c.Recipients.Count(r => r.ClickedAt != null),
+                ClickRate = c.RecipientCount > 0 ? Math.Round((double)c.Recipients.Count(r => r.ClickedAt != null) / c.RecipientCount * 100, 2) : 0
             })
             .ToListAsync();
+    }
+
+    public async Task<EmailSubscriber.API.DTOs.CampaignStatsDto?> GetCampaignStatsAsync(int id)
+    {
+        var campaign = await _context.Campaigns
+            .Include(c => c.Recipients)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (campaign == null) return null;
+
+        int sent = campaign.Recipients.Count(r => r.Status == "sent");
+        int opened = campaign.Recipients.Count(r => r.OpenedAt != null);
+        int clicked = campaign.Recipients.Count(r => r.ClickedAt != null);
+
+        return new EmailSubscriber.API.DTOs.CampaignStatsDto
+        {
+            Sent = sent,
+            Opened = opened,
+            OpenRate = sent > 0 ? Math.Round((double)opened / sent * 100, 2) : 0,
+            Clicked = clicked,
+            ClickRate = sent > 0 ? Math.Round((double)clicked / sent * 100, 2) : 0
+        };
     }
 }
