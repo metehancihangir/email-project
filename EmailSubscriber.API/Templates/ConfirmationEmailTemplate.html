@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>E-Bülten Aboneliğinizi Onaylayın</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); text-align: center; }
+        .logo { width: 64px; height: 64px; background-color: #10b981; color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 24px; line-height: 64px; }
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #111827; }
+        p { font-size: 16px; color: #6b7280; line-height: 1.5; margin-bottom: 32px; }
+        .btn { display: inline-block; background-color: #10b981; color: #ffffff !important; font-weight: 500; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
+        .btn:hover { background-color: #059669; }
+        .footer { margin-top: 40px; font-size: 14px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">✉️</div>
+        <h1>Merhaba {{Name}},</h1>
+        <p>E-bültenimize abone olduğunuz için teşekkür ederiz. Aboneliğinizi tamamlamak ve en güncel içerikleri almaya başlamak için lütfen aşağıdaki butona tıklayın.</p>
+        <a href="{{ConfirmUrl}}" class="btn">Aboneliğimi Onayla</a>
+        <div class="footer">
+            Eğer bu isteği siz yapmadıysanız, bu e-postayı güvenle silebilirsiniz.
+        </div>
+    </div>
+</body>
+</html>

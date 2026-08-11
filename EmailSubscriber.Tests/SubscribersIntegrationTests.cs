@@ -142,4 +142,134 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.NotNull(lastResponse);
         Assert.Equal(HttpStatusCode.TooManyRequests, lastResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task Get_Confirm_ValidToken_ReturnsOk() // 3.3.1
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        string token = Guid.NewGuid().ToString("N");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Subscribers.Add(new Subscriber { Email = "confirm@example.com", ConfirmationToken = token, ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24) });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var response = await client.GetAsync($"/api/subscribers/confirm/{token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var sub = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == "confirm@example.com");
+            Assert.True(sub.IsConfirmed);
+            // We do not nullify the token to keep it idempotent.
+            Assert.NotNull(sub.ConfirmationToken);
+        }
+    }
+
+    [Fact]
+    public async Task Get_Confirm_InvalidToken_ReturnsNotFound() // 3.3.3
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        string token = "invalid-token";
+
+        // Act
+        var response = await client.GetAsync($"/api/subscribers/confirm/{token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_Confirm_AlreadyConfirmed_ReturnsOkIdempotent() // 3.3.4
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        string token = Guid.NewGuid().ToString("N");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Subscribers.Add(new Subscriber { Email = "idempotent@example.com", ConfirmationToken = token, IsConfirmed = true });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var response = await client.GetAsync($"/api/subscribers/confirm/{token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_Confirm_ExpiredToken_ReturnsGone() // 3.3.2
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        string token = Guid.NewGuid().ToString("N");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Subscribers.Add(new Subscriber { Email = "expired@example.com", ConfirmationToken = token, ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(-1) });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var response = await client.GetAsync($"/api/subscribers/confirm/{token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_ResendConfirmation_ValidEmail_ReturnsAccepted()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Subscribers.Add(new Subscriber { Email = "resend@example.com", IsConfirmed = false });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var request = new ResendRequest("resend@example.com");
+        var response = await client.PostAsJsonAsync("/api/subscribers/resend-confirmation", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_Unsubscribe_ValidToken_ReturnsOk() // 3.3.5
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        string email = "unsubscribe@example.com";
+        string token = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(email));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Subscribers.Add(new Subscriber { Email = email, IsActive = true });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var response = await client.GetAsync($"/api/subscribers/unsubscribe/{token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var sub = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
+            Assert.False(sub.IsActive);
+            Assert.NotNull(sub.UnsubscribedAt);
+        }
+    }
 }
