@@ -25,7 +25,7 @@ try
     // ─── Database (MySQL + EF Core) ──────────────────────────────────────────
     var connectionString = builder.Configuration.GetConnectionString("Default");
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 32))));
 
     // ─── JWT Authentication ──────────────────────────────────────────────────
     var jwtSecret = builder.Configuration["Jwt:Secret"]

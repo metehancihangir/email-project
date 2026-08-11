@@ -10,4 +10,8 @@ public interface IAdminService
     Task<bool> DeleteSubscriberAsync(int id);
     Task<object> GetStatsAsync();
     Task<object> GetGrowthChartAsync();
+    
+    // Newsletter & Campaigns
+    Task<(int campaignId, int recipientCount)> SendNewsletterAsync(string subject, string htmlBody);
+    Task<IEnumerable<EmailSubscriber.API.DTOs.CampaignDto>> GetCampaignsAsync();
 }

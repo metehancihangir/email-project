@@ -13,11 +13,13 @@ public class AdminService : IAdminService
 {
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly EmailSubscriber.API.Queue.IEmailQueueService _emailQueue;
 
-    public AdminService(AppDbContext context, IConfiguration configuration)
+    public AdminService(AppDbContext context, IConfiguration configuration, EmailSubscriber.API.Queue.IEmailQueueService emailQueue)
     {
         _context = context;
         _configuration = configuration;
+        _emailQueue = emailQueue;
     }
 
     public Task<string?> LoginAsync(string username, string password)
@@ -81,8 +83,7 @@ public class AdminService : IAdminService
             query = query.Where(s => s.IsConfirmed == isConfirmed.Value);
         }
 
-        // Güvenlik için tokenları boşaltıyoruz (DTO kullanmadığımız için entity üzerinde null yapıp gönderiyoruz ama save etmiyoruz).
-        // Daha iyi yaklaşım DTO dönmek.
+        // Güvenlik için tokenları boşaltıyoruz
         var list = await query.OrderByDescending(s => s.SubscribedAt).ToListAsync();
         
         list.ForEach(s => 
@@ -133,13 +134,71 @@ public class AdminService : IAdminService
     {
         var thirtyDaysAgo = DateTime.UtcNow.Date.AddDays(-30);
 
-        var data = await _context.Subscribers
+        var growthData = await _context.Subscribers
             .Where(s => s.SubscribedAt >= thirtyDaysAgo)
             .GroupBy(s => s.SubscribedAt.Date)
             .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
             .OrderBy(x => x.date)
             .ToListAsync();
 
-        return data;
+        return growthData;
+    }
+
+    public async Task<(int campaignId, int recipientCount)> SendNewsletterAsync(string subject, string htmlBody)
+    {
+        var activeSubscribers = await _context.Subscribers
+            .Where(s => s.IsActive && s.IsConfirmed)
+            .ToListAsync();
+
+        int recipientCount = activeSubscribers.Count;
+
+        var campaign = new Campaign
+        {
+            Subject = subject,
+            HtmlBody = htmlBody,
+            SentAt = DateTime.UtcNow,
+            RecipientCount = recipientCount
+        };
+
+        _context.Campaigns.Add(campaign);
+        await _context.SaveChangesAsync();
+
+        var host = _configuration["AppUrl"] ?? "http://localhost:5117";
+        
+        foreach (var sub in activeSubscribers)
+        {
+            var recipient = new CampaignRecipient
+            {
+                CampaignId = campaign.Id,
+                SubscriberId = sub.Id,
+                SentAt = DateTime.UtcNow,
+                Status = "pending"
+            };
+
+            _context.CampaignRecipients.Add(recipient);
+            await _context.SaveChangesAsync();
+
+            string unsubscribeLink = $"{host}/api/subscribers/unsubscribe?token={sub.ConfirmationToken}";
+            string bodyWithUnsubscribe = htmlBody + $"<br><br><small><a href='{unsubscribeLink}'>Abonelikten Ayrıl</a></small>";
+
+            var job = new EmailSubscriber.API.Queue.EmailJob(sub.Email, sub.Name, subject, bodyWithUnsubscribe, recipient.Id);
+            _emailQueue.Enqueue(job);
+        }
+
+        return (campaign.Id, recipientCount);
+    }
+
+    public async Task<IEnumerable<EmailSubscriber.API.DTOs.CampaignDto>> GetCampaignsAsync()
+    {
+        return await _context.Campaigns
+            .OrderByDescending(c => c.SentAt)
+            .Select(c => new EmailSubscriber.API.DTOs.CampaignDto
+            {
+                Id = c.Id,
+                Subject = c.Subject,
+                SentAt = c.SentAt,
+                RecipientCount = c.RecipientCount
+            })
+            .ToListAsync();
     }
 }
