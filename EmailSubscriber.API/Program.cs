@@ -1,9 +1,11 @@
 using EmailSubscriber.API.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using System.Threading.RateLimiting;
 
 // ─── Serilog bootstrap logger ───────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
@@ -50,12 +52,25 @@ try
     {
         options.AddPolicy("FrontendPolicy", policy =>
             policy.WithOrigins(frontendUrl)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod());
+                .AllowAnyHeader()
+                .AllowAnyMethod());
     });
 
     // ─── Rate Limiting (Faz 1'de genişletilecek) ─────────────────────────────
-    builder.Services.AddRateLimiter(_ => { });
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.AddFixedWindowLimiter("Api", opt =>
+        {
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.PermitLimit = 3;
+            opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 0; // Kuyrukta bekleme yok, direkt reddet.
+        });
+        
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    });
+
+    builder.Services.AddScoped<EmailSubscriber.API.Services.ISubscriberService, EmailSubscriber.API.Services.SubscriberService>();
 
     builder.Services.AddControllers();
 
@@ -65,10 +80,10 @@ try
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();  // req. 4.3 — HTTPS zorunluluğu
     app.UseCors("FrontendPolicy");
-    app.UseRateLimiter();
+    app.UseRateLimiter(); // Apply general rate limiter if needed, but we apply to endpoints
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapControllers();
+    app.MapControllers().RequireRateLimiting("Api");
 
     // ─── Health Check ─────────────────────────────────────────────────────────
     app.MapGet("/health", () => Results.Ok(new { status = "OK", timestamp = DateTime.UtcNow }));
@@ -83,3 +98,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program { }

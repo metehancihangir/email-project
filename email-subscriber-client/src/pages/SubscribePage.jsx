@@ -1,12 +1,50 @@
-﻿/**
- * Abonelik Formu sayfası
- * TODO: Faz 1'de implemente edilecek.
- */
+import Navbar from '../components/Navbar';
+import SubscribeForm from '../components/SubscribeForm';
+
 export default function SubscribePage() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold text-text">Abonelik Formu</h1>
-      <p className="text-text-muted mt-2">Bu sayfa Faz 1'de implemente edilecek.</p>
+    <div className="min-h-screen bg-surface flex flex-col font-sans">
+      <Navbar />
+
+      <main className="flex-1 flex flex-col md:flex-row items-center justify-center p-6 md:p-12 max-w-7xl mx-auto w-full gap-12">
+        
+        {/* Hero Section */}
+        <div className="flex-1 space-y-6 text-center md:text-left">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-text tracking-tight leading-tight">
+            Gelişmeleri İlk Sen Öğren!
+          </h1>
+          <p className="text-lg md:text-xl text-text-muted max-w-lg">
+            Haftalık bültenimize katılarak sektördeki en son trendleri, ipuçlarını ve özel içerikleri doğrudan e-posta kutunda bulabilirsin.
+          </p>
+          
+          <ul className="space-y-4 pt-4 text-left inline-block md:block mx-auto">
+            <li className="flex items-center text-text gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+              </span>
+              <span>Sıfır spam, tamamen değer odaklı içerik.</span>
+            </li>
+            <li className="flex items-center text-text gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+              </span>
+              <span>Her hafta düzenli ve özgün yazılar.</span>
+            </li>
+            <li className="flex items-center text-text gap-3">
+              <span className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+              </span>
+              <span>İstediğiniz zaman tek tıkla abonelikten ayrılma özgürlüğü.</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Form Section */}
+        <div className="flex-1 w-full max-w-md">
+          <SubscribeForm />
+        </div>
+
+      </main>
     </div>
   );
 }
