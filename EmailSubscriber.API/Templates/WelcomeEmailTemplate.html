@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Aramıza Hoş Geldiniz!</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); text-align: center; }
+        .logo { width: 64px; height: 64px; background-color: #10b981; color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 24px; line-height: 64px; }
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #111827; }
+        p { font-size: 16px; color: #6b7280; line-height: 1.5; margin-bottom: 32px; }
+        .footer { margin-top: 40px; font-size: 14px; color: #9ca3af; border-top: 1px solid #f3f4f6; padding-top: 24px; }
+        .unsubscribe { color: #6b7280; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎉</div>
+        <h1>Aramıza Hoş Geldiniz {{Name}}!</h1>
+        <p>Aboneliğiniz başarıyla onaylandı. Artık en son güncellemeleri, özel içerikleri ve duyuruları ilk siz öğreneceksiniz.</p>
+        <p>Sizinle harika içerikler paylaşmak için sabırsızlanıyoruz.</p>
+        <div class="footer">
+            E-bülten almak istemiyorsanız <a href="{{UnsubscribeUrl}}" class="unsubscribe">buraya tıklayarak abonelikten ayrılabilirsiniz.</a>
+        </div>
+    </div>
+</body>
+</html>
