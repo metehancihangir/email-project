@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  /* ─── Clean Minimal Renk Paleti ─────────────────────────────── */
+  --color-primary:       #10b981;
+  --color-primary-dark:  #059669;
+  --color-primary-light: #d1fae5;
+  --color-surface:       #ffffff;
+  --color-surface-alt:   #f9fafb;
+  --color-text:          #111827;
+  --color-text-muted:    #6b7280;
+
+  /* ─── Tipografi ──────────────────────────────────────────────── */
+  --font-sans: 'Inter', 'Outfit', system-ui, sans-serif;
+}
+
+/* ─── Global Stiller ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
