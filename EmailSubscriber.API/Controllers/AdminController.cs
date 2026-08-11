@@ -66,7 +66,27 @@ public class AdminController : ControllerBase
     [HttpGet("subscribers/growth")]
     public async Task<IActionResult> GetGrowthChart()
     {
-        var growth = await _adminService.GetGrowthChartAsync();
-        return Ok(growth);
+        var data = await _adminService.GetGrowthChartAsync();
+        return Ok(data);
+    }
+
+    [Authorize]
+    [HttpPost("newsletter")]
+    public async Task<IActionResult> SendNewsletter([FromBody] NewsletterSendRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var (campaignId, recipientCount) = await _adminService.SendNewsletterAsync(request.Subject, request.HtmlBody);
+
+        return Accepted(new { campaignId, recipientCount });
+    }
+
+    [Authorize]
+    [HttpGet("campaigns")]
+    public async Task<IActionResult> GetCampaigns()
+    {
+        var campaigns = await _adminService.GetCampaignsAsync();
+        return Ok(campaigns);
     }
 }

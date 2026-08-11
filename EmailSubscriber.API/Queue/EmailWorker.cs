@@ -1,4 +1,6 @@
+using EmailSubscriber.API.Data;
 using EmailSubscriber.API.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -25,6 +27,8 @@ public class EmailWorker : BackgroundService
         await foreach (var job in _queue.DequeueAllAsync(ct))
         {
             _logger.LogInformation("Kuyruktan yeni e-posta görevi alındı: Kime: {To}", job.To);
+            
+            bool success = false;
 
             for (int attempt = 1; attempt <= MaxRetry; attempt++)
             {
@@ -36,6 +40,7 @@ public class EmailWorker : BackgroundService
                     await emailService.SendAsync(job.To, job.ToName, job.Subject, job.HtmlBody);
                     
                     _logger.LogInformation("E-posta başarıyla gönderildi: {To}", job.To);
+                    success = true;
                     break;
                 }
                 catch (Exception ex)
@@ -52,6 +57,27 @@ public class EmailWorker : BackgroundService
                     {
                         _logger.LogError("E-posta maksimum deneme sayısına ulaştı ve gönderilemedi: {To}", job.To);
                     }
+                }
+            }
+
+            // Update Database if this job belongs to a campaign
+            if (job.CampaignRecipientId.HasValue)
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var recipient = await db.CampaignRecipients.FindAsync(new object[] { job.CampaignRecipientId.Value }, ct);
+                    
+                    if (recipient != null)
+                    {
+                        recipient.Status = success ? "sent" : "failed";
+                        await db.SaveChangesAsync(ct);
+                    }
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "CampaignRecipient status güncellenirken hata oluştu. RecipientId: {Id}", job.CampaignRecipientId.Value);
                 }
             }
         }
