@@ -70,6 +70,10 @@ try
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     });
 
+    builder.Services.AddSingleton<EmailSubscriber.API.Queue.IEmailQueueService, EmailSubscriber.API.Queue.EmailQueueService>();
+    builder.Services.AddHostedService<EmailSubscriber.API.Queue.EmailWorker>();
+    builder.Services.AddScoped<EmailSubscriber.API.Services.IEmailService, EmailSubscriber.API.Services.MailKitEmailService>();
+
     builder.Services.AddScoped<EmailSubscriber.API.Services.ISubscriberService, EmailSubscriber.API.Services.SubscriberService>();
 
     builder.Services.AddControllers();
