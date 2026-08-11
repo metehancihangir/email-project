@@ -9,11 +9,16 @@ public class SubscriberService : ISubscriberService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<SubscriberService> _logger;
+    private readonly EmailSubscriber.API.Queue.IEmailQueueService _emailQueueService;
 
-    public SubscriberService(AppDbContext context, ILogger<SubscriberService> logger)
+    public SubscriberService(
+        AppDbContext context, 
+        ILogger<SubscriberService> logger, 
+        EmailSubscriber.API.Queue.IEmailQueueService emailQueueService)
     {
         _context = context;
         _logger = logger;
+        _emailQueueService = emailQueueService;
     }
 
     public async Task<(bool IsSuccess, string Message)> SubscribeAsync(string email, string? name)
@@ -57,8 +62,19 @@ public class SubscriberService : ISubscriberService
 
         await _context.SaveChangesAsync();
 
-        // Şimdilik ILogger ile simüle ediyoruz (Faz 2'de e-posta kuyruğa gidecek)
-        _logger.LogInformation("SIMULATION: Onay e-postası gönderildi -> Kime: {Email}, Token: {Token}", email, existingSubscriber.ConfirmationToken);
+        // E-posta gönderimi kuyruğa alınır (Arka planda işlenecek)
+        string confirmUrl = $"http://localhost:5173/confirm?token={existingSubscriber.ConfirmationToken}";
+        string htmlBody = $"<h2>Merhaba {existingSubscriber.Name ?? existingSubscriber.Email},</h2><p>Aboneliğinizi onaylamak için lütfen <a href='{confirmUrl}'>buraya tıklayın</a>.</p>";
+        
+        var job = new EmailSubscriber.API.Queue.EmailJob(
+            To: existingSubscriber.Email,
+            ToName: existingSubscriber.Name,
+            Subject: "E-Bülten Abonelik Onayı",
+            HtmlBody: htmlBody
+        );
+
+        _emailQueueService.Enqueue(job);
+        _logger.LogInformation("Onay e-postası görevi kuyruğa eklendi: {Email}", existingSubscriber.Email);
 
         return (true, "Onay e-postası gönderildi!");
     }
