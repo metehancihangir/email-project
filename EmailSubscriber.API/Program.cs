@@ -76,6 +76,7 @@ try
     builder.Services.AddScoped<EmailSubscriber.API.Services.IEmailTemplateService, EmailSubscriber.API.Services.EmailTemplateService>();
 
     builder.Services.AddScoped<EmailSubscriber.API.Services.ISubscriberService, EmailSubscriber.API.Services.SubscriberService>();
+    builder.Services.AddScoped<EmailSubscriber.API.Services.IAdminService, EmailSubscriber.API.Services.AdminService>();
 
     builder.Services.AddControllers();
 
