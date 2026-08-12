@@ -130,15 +130,15 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
         var client = _factory.CreateClient();
         var request = new SubscribeRequest("rate@example.com", "Rate User", null);
 
-        // Act - Send 4 requests rapidly. Limit is 3 per minute.
+        // Act - Send 101 requests rapidly. Limit is 100 per minute.
         HttpResponseMessage lastResponse = null;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 101; i++)
         {
             lastResponse = await client.PostAsJsonAsync("/api/subscribers", request);
         }
 
         // Assert
-        // The 4th request should be 429 Too Many Requests
+        // The 101st request should be 429 Too Many Requests
         Assert.NotNull(lastResponse);
         Assert.Equal(HttpStatusCode.TooManyRequests, lastResponse.StatusCode);
     }
@@ -166,8 +166,8 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var sub = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == "confirm@example.com");
             Assert.True(sub.IsConfirmed);
-            // We do not nullify the token to keep it idempotent.
-            Assert.NotNull(sub.ConfirmationToken);
+            // We nullify the token after confirmation.
+            Assert.Null(sub.ConfirmationToken);
         }
     }
 
@@ -251,11 +251,11 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Arrange
         var client = _factory.CreateClient();
         string email = "unsubscribe@example.com";
-        string token = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(email));
+        string token = "test-unsub-token-123";
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.Subscribers.Add(new Subscriber { Email = email, IsActive = true });
+            db.Subscribers.Add(new Subscriber { Email = email, IsActive = true, UnsubscribeToken = token });
             await db.SaveChangesAsync();
         }
 

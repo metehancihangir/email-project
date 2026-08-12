@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
             entity.HasIndex(s => s.Email).IsUnique();
             entity.Property(s => s.Name).HasMaxLength(100);
             entity.Property(s => s.ConfirmationToken).HasMaxLength(255);
+            entity.Property(s => s.UnsubscribeToken).HasMaxLength(64);
+            entity.HasIndex(s => s.UnsubscribeToken).IsUnique();
         });
 
         modelBuilder.Entity<Campaign>(entity =>

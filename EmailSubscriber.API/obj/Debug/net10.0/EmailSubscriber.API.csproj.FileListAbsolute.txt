@@ -122,7 +122,6 @@ C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\Ema
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.AssemblyInfo.cs
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.csproj.CoreCompileInputs.cache
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.sourcelink.json
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\rjimswa.dswa.cache.json
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
@@ -139,3 +138,4 @@ C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\Ema
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.genruntimeconfig.cache
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\ref\EmailSubscriber.API.dll
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\HtmlAgilityPack.dll
+C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\obj\Debug\net10.0\EmailSubscriber.API.sourcelink.json
