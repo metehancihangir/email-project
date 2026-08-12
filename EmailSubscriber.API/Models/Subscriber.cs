@@ -11,4 +11,5 @@ public class Subscriber
     public DateTime? UnsubscribedAt { get; set; }
     public string? ConfirmationToken { get; set; }
     public DateTime? ConfirmationTokenExpiresAt { get; set; }
+    public string? UnsubscribeToken { get; set; }
 }

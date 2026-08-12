@@ -65,6 +65,12 @@ public class TrackingController : ControllerBase
             await _context.SaveChangesAsync();
         }
 
+        if (!Uri.TryCreate(trackedLink.OriginalUrl, UriKind.Absolute, out var uriResult) ||
+            (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+        {
+            return BadRequest("Geçersiz yönlendirme bağlantısı.");
+        }
+
         return Redirect(trackedLink.OriginalUrl);
     }
 }

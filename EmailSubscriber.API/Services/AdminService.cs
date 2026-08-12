@@ -64,7 +64,7 @@ public class AdminService : IAdminService
         return Task.FromResult<string?>(tokenHandler.WriteToken(token));
     }
 
-    public async Task<IEnumerable<Subscriber>> GetSubscribersAsync(string? search, bool? isActive, bool? isConfirmed)
+    public async Task<IEnumerable<EmailSubscriber.API.DTOs.SubscriberDto>> GetSubscribersAsync(string? search, bool? isActive, bool? isConfirmed)
     {
         var query = _context.Subscribers.AsQueryable();
 
@@ -83,14 +83,19 @@ public class AdminService : IAdminService
             query = query.Where(s => s.IsConfirmed == isConfirmed.Value);
         }
 
-        // Güvenlik için tokenları boşaltıyoruz
-        var list = await query.OrderByDescending(s => s.SubscribedAt).ToListAsync();
-        
-        list.ForEach(s => 
-        {
-            s.ConfirmationToken = null;
-            s.ConfirmationTokenExpiresAt = null;
-        });
+        // Entity'leri DTO'ya mapliyoruz
+        var list = await query.OrderByDescending(s => s.SubscribedAt)
+            .Select(s => new EmailSubscriber.API.DTOs.SubscriberDto
+            {
+                Id = s.Id,
+                Email = s.Email,
+                Name = s.Name,
+                IsConfirmed = s.IsConfirmed,
+                IsActive = s.IsActive,
+                SubscribedAt = s.SubscribedAt,
+                UnsubscribedAt = s.UnsubscribedAt
+            })
+            .ToListAsync();
 
         return list;
     }
@@ -212,7 +217,7 @@ public class AdminService : IAdminService
             string trackingPixel = $"<img src=\"{host}/api/track/open/{campaign.Id}/{sub.Id}\" width=\"1\" height=\"1\" style=\"display:none;\" />";
             string bodyWithTracking = doc.DocumentNode.OuterHtml + trackingPixel;
 
-            var unsubToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sub.Email));
+            var unsubToken = sub.UnsubscribeToken;
             string frontendUrl = _configuration["App:BaseUrl"] ?? "http://localhost:5173";
             string unsubscribeLink = $"{frontendUrl}/unsubscribe?token={unsubToken}";
             string finalBody = bodyWithTracking + $"<br><br><small><a href='{unsubscribeLink}'>Abonelikten Ayrıl</a></small>";
