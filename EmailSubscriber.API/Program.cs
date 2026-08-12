@@ -47,11 +47,11 @@ try
     builder.Services.AddAuthorization();
 
     // ─── CORS ────────────────────────────────────────────────────────────────
-    var frontendUrl = builder.Configuration["App:BaseUrl"] ?? "http://localhost:5173";
+    var frontendUrls = new[] { "http://localhost:5173", "http://localhost:5174" };
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("FrontendPolicy", policy =>
-            policy.WithOrigins(frontendUrl)
+            policy.WithOrigins(frontendUrls)
                 .AllowAnyHeader()
                 .AllowAnyMethod());
     });
@@ -77,6 +77,7 @@ try
 
     builder.Services.AddScoped<EmailSubscriber.API.Services.ISubscriberService, EmailSubscriber.API.Services.SubscriberService>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IAdminService, EmailSubscriber.API.Services.AdminService>();
+    builder.Services.AddScoped<EmailSubscriber.API.Services.ITrackingService, EmailSubscriber.API.Services.TrackingService>();
 
     builder.Services.AddControllers();
 

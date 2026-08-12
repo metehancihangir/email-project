@@ -30,9 +30,9 @@ public class AdminController : ControllerBase
 
     [Authorize]
     [HttpGet("subscribers")]
-    public async Task<IActionResult> GetSubscribers([FromQuery] string? search, [FromQuery] bool? isActive, [FromQuery] bool? isConfirmed)
+    public async Task<IActionResult> GetSubscribers([FromQuery] string? search, [FromQuery] bool? isActive, [FromQuery] bool? isConfirmed, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var subscribers = await _adminService.GetSubscribersAsync(search, isActive, isConfirmed);
+        var subscribers = await _adminService.GetSubscribersAsync(search, isActive, isConfirmed, page, pageSize);
         return Ok(subscribers);
     }
 
