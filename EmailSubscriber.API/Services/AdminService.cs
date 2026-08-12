@@ -64,7 +64,7 @@ public class AdminService : IAdminService
         return Task.FromResult<string?>(tokenHandler.WriteToken(token));
     }
 
-    public async Task<IEnumerable<EmailSubscriber.API.DTOs.SubscriberDto>> GetSubscribersAsync(string? search, bool? isActive, bool? isConfirmed)
+    public async Task<EmailSubscriber.API.DTOs.PagedResult<EmailSubscriber.API.DTOs.SubscriberDto>> GetSubscribersAsync(string? search, bool? isActive, bool? isConfirmed, int page = 1, int pageSize = 20)
     {
         var query = _context.Subscribers.AsQueryable();
 
@@ -83,8 +83,12 @@ public class AdminService : IAdminService
             query = query.Where(s => s.IsConfirmed == isConfirmed.Value);
         }
 
+        var totalCount = await query.CountAsync();
+
         // Entity'leri DTO'ya mapliyoruz
-        var list = await query.OrderByDescending(s => s.SubscribedAt)
+        var items = await query.OrderByDescending(s => s.SubscribedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(s => new EmailSubscriber.API.DTOs.SubscriberDto
             {
                 Id = s.Id,
@@ -97,7 +101,13 @@ public class AdminService : IAdminService
             })
             .ToListAsync();
 
-        return list;
+        return new EmailSubscriber.API.DTOs.PagedResult<EmailSubscriber.API.DTOs.SubscriberDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize
+        };
     }
 
     public async Task<bool> DeactivateSubscriberAsync(int id)

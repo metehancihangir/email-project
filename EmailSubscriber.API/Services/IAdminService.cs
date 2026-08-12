@@ -5,7 +5,7 @@ namespace EmailSubscriber.API.Services;
 public interface IAdminService
 {
     Task<string?> LoginAsync(string username, string password);
-    Task<IEnumerable<EmailSubscriber.API.DTOs.SubscriberDto>> GetSubscribersAsync(string? search, bool? isActive, bool? isConfirmed);
+    Task<EmailSubscriber.API.DTOs.PagedResult<EmailSubscriber.API.DTOs.SubscriberDto>> GetSubscribersAsync(string? search, bool? isActive, bool? isConfirmed, int page = 1, int pageSize = 20);
     Task<bool> DeactivateSubscriberAsync(int id);
     Task<bool> DeleteSubscriberAsync(int id);
     Task<object> GetStatsAsync();

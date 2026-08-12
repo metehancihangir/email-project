@@ -57,6 +57,7 @@ export default function AdminLayout() {
         <div className="absolute bottom-0 w-full p-4 border-t border-gray-100">
           <button
             onClick={handleLogout}
+            aria-label="Sistemden Çıkış Yap"
             className="flex items-center px-4 py-3 w-full text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 transition-colors"
           >
             <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -72,6 +73,8 @@ export default function AdminLayout() {
         <header className="h-16 bg-surface border-b border-gray-100 flex items-center justify-between px-4 md:px-6 z-10">
           <button
             className="md:hidden p-2 text-text-muted hover:bg-gray-100 rounded-lg"
+            aria-label="Mobil Menüyü Aç/Kapat"
+            aria-expanded={mobileOpen}
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>

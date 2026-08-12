@@ -8,27 +8,17 @@ namespace EmailSubscriber.API.Controllers;
 [Route("api/track")]
 public class TrackingController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly EmailSubscriber.API.Services.ITrackingService _trackingService;
 
-    public TrackingController(AppDbContext context)
+    public TrackingController(EmailSubscriber.API.Services.ITrackingService trackingService)
     {
-        _context = context;
+        _trackingService = trackingService;
     }
 
     [HttpGet("open/{campaignId}/{subscriberId}")]
     public async Task<IActionResult> TrackOpen(int campaignId, int subscriberId)
     {
-        var recipient = await _context.CampaignRecipients
-            .FirstOrDefaultAsync(r => r.CampaignId == campaignId && r.SubscriberId == subscriberId);
-
-        if (recipient != null)
-        {
-            if (recipient.OpenedAt == null)
-            {
-                recipient.OpenedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-            }
-        }
+        await _trackingService.TrackOpenAsync(campaignId, subscriberId);
 
         // Return 1x1 transparent GIF
         var pixel = Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
@@ -42,35 +32,19 @@ public class TrackingController : ControllerBase
     [HttpGet("click/{linkToken}")]
     public async Task<IActionResult> TrackClick(string linkToken)
     {
-        var trackedLink = await _context.TrackedLinks
-            .FirstOrDefaultAsync(t => t.LinkToken == linkToken);
+        var result = await _trackingService.TrackClickAsync(linkToken);
 
-        if (trackedLink == null)
+        if (!result.IsSuccess || result.OriginalUrl == null)
         {
             return NotFound();
         }
 
-        if (trackedLink.ClickedAt == null)
-        {
-            trackedLink.ClickedAt = DateTime.UtcNow;
-            
-            var recipient = await _context.CampaignRecipients
-                .FirstOrDefaultAsync(r => r.CampaignId == trackedLink.CampaignId && r.SubscriberId == trackedLink.SubscriberId);
-
-            if (recipient != null && recipient.ClickedAt == null)
-            {
-                recipient.ClickedAt = DateTime.UtcNow;
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
-        if (!Uri.TryCreate(trackedLink.OriginalUrl, UriKind.Absolute, out var uriResult) ||
+        if (!Uri.TryCreate(result.OriginalUrl, UriKind.Absolute, out var uriResult) ||
             (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
         {
             return BadRequest("Geçersiz yönlendirme bağlantısı.");
         }
 
-        return Redirect(trackedLink.OriginalUrl);
+        return Redirect(result.OriginalUrl);
     }
 }

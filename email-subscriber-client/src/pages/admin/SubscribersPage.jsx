@@ -7,6 +7,11 @@ export default function SubscribersPage() {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ isActive: '', isConfirmed: '' });
   const [loading, setLoading] = useState(true);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 20;
 
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -18,9 +23,12 @@ export default function SubscribersPage() {
       if (search) params.append('search', search);
       if (filters.isActive !== '') params.append('isActive', filters.isActive);
       if (filters.isConfirmed !== '') params.append('isConfirmed', filters.isConfirmed);
+      params.append('page', currentPage.toString());
+      params.append('pageSize', pageSize.toString());
 
       const res = await api.get(`/api/admin/subscribers?${params.toString()}`);
-      setSubscribers(res.data);
+      setSubscribers(res.data.items);
+      setTotalPages(res.data.totalPages);
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,11 +37,15 @@ export default function SubscribersPage() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filters]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       fetchSubscribers();
     }, 300); // Debounce
     return () => clearTimeout(timer);
-  }, [search, filters]);
+  }, [search, filters, currentPage]);
 
   const handleDelete = async (id) => {
     try {
@@ -74,6 +86,7 @@ export default function SubscribersPage() {
           <input
             type="text"
             placeholder="İsim veya E-posta ara..."
+            aria-label="Abonelerde ara"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
@@ -81,6 +94,7 @@ export default function SubscribersPage() {
           <svg className="w-5 h-5 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
         <select
+          aria-label="Durum Filtresi"
           value={filters.isActive}
           onChange={(e) => setFilters({ ...filters, isActive: e.target.value })}
           className="px-4 py-2 rounded-xl border border-gray-200 focus:border-primary outline-none bg-white text-gray-700"
@@ -90,6 +104,7 @@ export default function SubscribersPage() {
           <option value="false">Pasif</option>
         </select>
         <select
+          aria-label="Onay Filtresi"
           value={filters.isConfirmed}
           onChange={(e) => setFilters({ ...filters, isConfirmed: e.target.value })}
           className="px-4 py-2 rounded-xl border border-gray-200 focus:border-primary outline-none bg-white text-gray-700"
@@ -156,6 +171,7 @@ export default function SubscribersPage() {
                         {sub.isActive && (
                           <button 
                             onClick={() => confirmAction('deactivate', sub)}
+                            aria-label={`${sub.email} abonesini pasife al`}
                             className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                           >
                             Pasife Al
@@ -163,6 +179,7 @@ export default function SubscribersPage() {
                         )}
                         <button 
                           onClick={() => confirmAction('delete', sub)}
+                          aria-label={`${sub.email} abonesini sil`}
                           className="text-xs px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
                         >
                           Sil
@@ -175,6 +192,31 @@ export default function SubscribersPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center p-4 border-t border-gray-100 bg-white" role="navigation" aria-label="Sayfalama">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              aria-label="Önceki Sayfa"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Önceki
+            </button>
+            <span className="text-sm text-gray-600 font-medium" aria-live="polite">
+              Sayfa {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              aria-label="Sonraki Sayfa"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Sonraki
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Confirm Dialog */}
