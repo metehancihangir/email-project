@@ -46,6 +46,7 @@ public class SubscriberService : ISubscriberService
             
             existingSubscriber.ConfirmationToken = Guid.NewGuid().ToString("N");
             existingSubscriber.ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+            existingSubscriber.LastVerificationCodeSentAt = DateTime.UtcNow;
             if (string.IsNullOrEmpty(existingSubscriber.UnsubscribeToken))
             {
                 existingSubscriber.UnsubscribeToken = Guid.NewGuid().ToString("N");
@@ -63,6 +64,7 @@ public class SubscriberService : ISubscriberService
                 SubscribedAt = DateTime.UtcNow,
                 ConfirmationToken = Guid.NewGuid().ToString("N"),
                 ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24),
+                LastVerificationCodeSentAt = DateTime.UtcNow,
                 UnsubscribeToken = Guid.NewGuid().ToString("N")
             };
             
@@ -132,8 +134,15 @@ public class SubscriberService : ISubscriberService
         if (subscriber == null || subscriber.IsConfirmed)
             return (400, "Geçersiz istek.");
 
+        if (subscriber.LastVerificationCodeSentAt.HasValue && 
+            subscriber.LastVerificationCodeSentAt.Value.AddMinutes(2) > DateTime.UtcNow)
+        {
+            return (429, "Yeni kod talep etmek için lütfen 2 dakika bekleyin.");
+        }
+
         subscriber.ConfirmationToken = Guid.NewGuid().ToString("N");
         subscriber.ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+        subscriber.LastVerificationCodeSentAt = DateTime.UtcNow;
         _context.Subscribers.Update(subscriber);
         await _context.SaveChangesAsync();
 

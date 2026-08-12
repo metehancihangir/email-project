@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
+import bgImage from '../../assets/bg.png';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -28,10 +29,16 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex h-screen bg-surface-alt">
+    <div 
+      className="flex h-screen relative"
+      style={{ backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-sm z-0"></div>
+      
+      <div className="flex w-full h-full relative z-10">
       
       {/* Sidebar - Desktop */}
-      <aside className={`fixed inset-y-0 left-0 bg-surface w-64 border-r border-gray-100 transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static z-20 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 bg-surface/95 backdrop-blur-md w-64 border-r border-white/20 transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static z-20 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center px-6 border-b border-gray-100">
           <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white mr-2">✉️</div>
           <span className="text-xl font-bold text-text">AdminPanel</span>
@@ -70,7 +77,7 @@ export default function AdminLayout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         
         {/* Topbar */}
-        <header className="h-16 bg-surface border-b border-gray-100 flex items-center justify-between px-4 md:px-6 z-10">
+        <header className="h-16 bg-surface/80 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-4 md:px-6 z-10">
           <button
             className="md:hidden p-2 text-text-muted hover:bg-gray-100 rounded-lg"
             aria-label="Mobil Menüyü Aç/Kapat"
@@ -105,6 +112,8 @@ export default function AdminLayout() {
           onClick={() => setMobileOpen(false)}
         />
       )}
+      
+      </div>
     </div>
   );
 }
