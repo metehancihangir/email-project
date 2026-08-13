@@ -86,6 +86,10 @@ try
 
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();  // req. 4.3 — HTTPS zorunluluğu
+    
+    // Enable serving static files from wwwroot
+    app.UseStaticFiles();
+
     app.UseCors("FrontendPolicy");
     app.UseRateLimiter(); // Apply general rate limiter if needed, but we apply to endpoints
     app.UseAuthentication();

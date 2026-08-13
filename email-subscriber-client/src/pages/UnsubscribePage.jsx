@@ -21,7 +21,7 @@ export default function UnsubscribePage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
+    <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex items-center justify-center p-4">
       <AnimatePresence mode="wait">
         {status === 'loading' && (
           <motion.div

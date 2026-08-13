@@ -98,4 +98,54 @@ public class AdminController : ControllerBase
         if (stats == null) return NotFound();
         return Ok(stats);
     }
+
+    [Authorize]
+    [HttpPost("images/upload")]
+    public async Task<IActionResult> UploadImage(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Dosya seçilmedi." });
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(ext))
+            return BadRequest(new { message = "Sadece resim dosyaları yüklenebilir." });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "Dosya boyutu 5MB'dan küçük olmalıdır." });
+
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
+        if (!Directory.Exists(uploadsFolder))
+            Directory.CreateDirectory(uploadsFolder);
+
+        var uniqueFileName = Guid.NewGuid().ToString("N") + ext;
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+        var imageUrl = $"{baseUrl}/uploads/images/{uniqueFileName}";
+
+        return Ok(new { url = imageUrl });
+    }
+
+    [Authorize]
+    [HttpDelete("images/{fileName}")]
+    public IActionResult DeleteImage(string fileName)
+    {
+        var safeFileName = Path.GetFileName(fileName);
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
+        var filePath = Path.Combine(uploadsFolder, safeFileName);
+
+        if (System.IO.File.Exists(filePath))
+        {
+            System.IO.File.Delete(filePath);
+            return Ok(new { message = "Resim başarıyla silindi." });
+        }
+
+        return NotFound(new { message = "Resim bulunamadı." });
+    }
 }

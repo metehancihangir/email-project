@@ -3,7 +3,7 @@ import SubscribeForm from '../components/SubscribeForm';
 
 export default function SubscribePage() {
   return (
-    <div className="min-h-screen bg-surface flex flex-col font-sans">
+    <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 flex flex-col md:flex-row items-center justify-center p-6 md:p-12 max-w-7xl mx-auto w-full gap-12">
@@ -45,6 +45,16 @@ export default function SubscribePage() {
         </div>
 
       </main>
+
+      {/* Footer */}
+      <footer className="py-6 text-center text-xs text-text-muted/60">
+        <p>&copy; {new Date().getFullYear()} SUBMAIL. Tüm hakları saklıdır.</p>
+        <p className="mt-1">
+          <a href="/gizlilik-politikasi" className="hover:text-primary transition-colors">Gizlilik Politikası</a>
+          <span className="mx-2">•</span>
+          <a href="/kullanim-kosullari" className="hover:text-primary transition-colors">Kullanım Koşulları</a>
+        </p>
+      </footer>
     </div>
   );
 }
