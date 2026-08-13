@@ -1,8 +1,11 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import NewsletterPreviewModal from '../components/NewsletterPreviewModal';
 
 export default function AboutPage() {
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   return (
     <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex flex-col font-sans">
       <Navbar />
@@ -12,7 +15,7 @@ export default function AboutPage() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="flex-1 max-w-4xl mx-auto w-full p-6 md:p-12"
       >
-        <div className="rounded-2xl p-4 md:p-8 text-text-muted">
+        <div className="bg-white/70 backdrop-blur-md shadow-xl border border-white/50 rounded-2xl p-8 md:p-12 text-text-muted">
           <h1 className="text-3xl md:text-4xl font-extrabold text-text mb-6 drop-shadow-sm">Hakkımızda</h1>
           
           <div className="space-y-5 font-medium text-lg">
@@ -27,18 +30,56 @@ export default function AboutPage() {
             <p>
               SUBMAIL, <strong>Finans</strong>, <strong>Mitoloji</strong>, <strong>Bilim</strong> ve <strong>Politika</strong> alanlarındaki en heyecan verici gelişmeleri, haftalık periyotlarla doğrudan e-posta kutunuza ulaştırır.
             </p>
-            <ul className="list-disc pl-5 space-y-2 mt-4 text-base">
-              <li><strong>Akıllı İçerik:</strong> Gelişmiş yapay zeka altyapımız, binlerce haberi ve kaynağı tarayarak sadece okumaya değer, en rafine bilgileri sizin için derler.</li>
-              <li><strong>Zaman Tasarrufu:</strong> Uzun araştırmalar yapmanıza gerek kalmaz. Hafta sonu kahvenizi yudumlarken, sadece dakikalar içinde gündeme hakim olursunuz.</li>
-              <li><strong>Sıfır Tekrar:</strong> Geliştirdiğimiz "Geçmiş Konu Belleği" sayesinde, daha önce okuduğunuz konular karşınıza tekrar çıkmaz. Her bültende yeni bir ufuk açılır.</li>
+            <ul className="space-y-4 mt-6 text-base">
+              <li className="flex gap-4 items-start">
+                <span className="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center shrink-0 mt-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </span>
+                <div>
+                  <strong className="text-text block mb-1">Akıllı İçerik</strong>
+                  Gelişmiş yapay zeka altyapımız, binlerce haberi ve kaynağı tarayarak <strong>sadece okumaya değer</strong>, en rafine bilgileri sizin için derler.
+                </div>
+              </li>
+              <li className="flex gap-4 items-start">
+                <span className="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center shrink-0 mt-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </span>
+                <div>
+                  <strong className="text-text block mb-1">Zaman Tasarrufu</strong>
+                  Uzun araştırmalar yapmanıza gerek kalmaz. Hafta sonu kahvenizi yudumlarken, sadece dakikalar içinde <strong>gündeme hakim olursunuz</strong>.
+                </div>
+              </li>
+              <li className="flex gap-4 items-start">
+                <span className="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center shrink-0 mt-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                </span>
+                <div>
+                  <strong className="text-text block mb-1">Sıfır Tekrar (Geçmiş Konu Belleği)</strong>
+                  Geliştirdiğimiz "Geçmiş Konu Belleği" sayesinde, <strong>daha önce okuduğunuz konular karşınıza tekrar çıkmaz</strong>. Her bültende yeni bir ufuk açılır.
+                </div>
+              </li>
             </ul>
 
             <p className="mt-8 font-semibold">
               Amacımız vaktinizi çalmak değil, vaktinize değer katmaktır. Aramıza katıldığınız için teşekkür ederiz!
             </p>
+            <div className="mt-10 text-center">
+              <button
+                onClick={() => setIsPreviewOpen(true)}
+                className="inline-flex items-center gap-2 text-primary font-medium hover:text-primary-dark transition-colors px-6 py-3 bg-primary/10 rounded-lg hover:bg-primary/20 shadow-sm"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                Örnek Bülteni İncele
+              </button>
+            </div>
           </div>
         </div>
       </motion.main>
+
+      <NewsletterPreviewModal 
+        isOpen={isPreviewOpen} 
+        onClose={() => setIsPreviewOpen(false)} 
+      />
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-text-muted/60">

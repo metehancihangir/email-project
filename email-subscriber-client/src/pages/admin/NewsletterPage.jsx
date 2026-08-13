@@ -35,6 +35,9 @@ export default function NewsletterPage() {
           quill.insertEmbed(range.index, 'image', url);
           // E-posta uyumluluğu için resme max-width ekle
           quill.formatText(range.index, 1, 'width', '100%');
+          // Resmin altına yazı yazılabilmesi için otomatik boşluk bırak
+          quill.insertText(range.index + 1, '\n');
+          quill.setSelection(range.index + 2);
 
           setUploadedImages(prev => [...prev, url]);
         } catch (err) {
