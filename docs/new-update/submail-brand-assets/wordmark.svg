@@ -1,0 +1,8 @@
+<svg width="200" height="48" viewBox="0 0 200 48" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="7" width="34" height="34" rx="8" fill="#10B981"/>
+  <text x="17" y="31" text-anchor="middle" font-size="18" font-weight="700"
+        fill="#ffffff" font-family="Arial, Helvetica, sans-serif">S</text>
+  <text x="46" y="32" font-size="22" font-weight="600" font-family="Arial, Helvetica, sans-serif">
+    <tspan fill="#111827">Sub</tspan><tspan fill="#10B981">mail</tspan>
+  </text>
+</svg>

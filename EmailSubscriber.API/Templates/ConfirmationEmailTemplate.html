@@ -2,21 +2,70 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Bülten Aboneliğinizi Onaylayın</title>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 40px 0; }
         .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); text-align: center; }
-        .logo { width: 64px; height: 64px; background-color: #10b981; color: white; border-radius: 50%; display: inline-block; text-align: center; font-size: 32px; margin-bottom: 24px; line-height: 64px; vertical-align: middle; }
         h1 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #111827; }
         p { font-size: 16px; color: #6b7280; line-height: 1.5; margin-bottom: 32px; }
         .btn { display: inline-block; background-color: #10b981; color: #ffffff !important; font-weight: 500; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
         .btn:hover { background-color: #059669; }
         .footer { margin-top: 40px; font-size: 14px; color: #9ca3af; }
+        /* Fallback: Non-Outlook istemciler için wrapper */
+        .logo-wrapper { margin: 0 auto 24px auto; width: 64px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">✉️</div>
+
+        <!--
+            TALEP 6 — Zarf İkonu Taşma Düzeltmesi (Faz 1 / 1.3.x)
+            Eski: <div class="logo">✉️</div> — inline-block + font-size:32px, ikon 64px daireyi taşıyordu.
+            Yeni: table-based layout + emoji boyutu 28px (daire çapının ~%43'ü) + display:block
+            Not: PNG asset mevcut değil, emoji kullanılmaya devam ediyor (✉️).
+                 SVG'ye geçiş yapılmadı (Outlook desktop SVG desteği zayıf — 1.3.5 gereği).
+        -->
+
+        <!-- Outlook MSO conditional -->
+        <!--[if mso]>
+        <table role="presentation" width="64" height="64" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
+          <tr>
+            <td width="64" height="64" align="center" valign="middle"
+                style="background-color:#10b981; border-radius:32px; width:64px; height:64px;">
+        <![endif]-->
+
+        <!-- Non-MSO istemciler -->
+        <!--[if !mso]><!-->
+        <div class="logo-wrapper">
+        <!--<![endif]-->
+
+        <table role="presentation" width="64" height="64" cellpadding="0" cellspacing="0"
+               style="margin:0 auto; border-collapse:collapse;">
+          <tr>
+            <td width="64" height="64" align="center" valign="middle"
+                style="width:64px; height:64px; background-color:#10b981; border-radius:50%;
+                       text-align:center; vertical-align:middle; font-size:28px; line-height:1;">
+              <!--
+                1.3.3: font-size:28px = ~%43 of 64px diameter (içinde kalacak şekilde)
+                1.3.4: display:block — inline varsayılan davranışından kaynaklanan boşlukları engeller
+                1.3.5: Emoji kullanılıyor (✉️), SVG yok — Outlook desktop uyumlu
+              -->
+              <span style="display:block; font-size:28px; line-height:1; text-align:center;">✉️</span>
+            </td>
+          </tr>
+        </table>
+
+        <!--[if !mso]><!-->
+        </div>
+        <!--<![endif]-->
+
+        <!--[if mso]>
+            </td>
+          </tr>
+        </table>
+        <![endif]-->
+
         <h1>Merhaba {{Name}},</h1>
         <p>E-bültenimize abone olduğunuz için teşekkür ederiz. Aboneliğinizi tamamlamak ve en güncel içerikleri almaya başlamak için lütfen aşağıdaki butona tıklayın.</p>
         <a href="{{ConfirmUrl}}" class="btn">Aboneliğimi Onayla</a>
