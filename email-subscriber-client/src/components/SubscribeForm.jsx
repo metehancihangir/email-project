@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { isValidEmail } from '../utils/validation';
 import Toast from './Toast';
@@ -11,6 +11,24 @@ export default function SubscribeForm() {
 
   const closeToast = () => setToast({ message: '', type: '' });
 
+  const [showResend, setShowResend] = useState(false);
+  const [resendState, setResendState] = useState({ isDisabled: false, remainingSeconds: 0 });
+  const [submittedEmail, setSubmittedEmail] = useState('');
+
+  useEffect(() => {
+    if (!resendState.isDisabled) return;
+    const interval = setInterval(() => {
+      setResendState((prev) => {
+        if (prev.remainingSeconds <= 1) {
+          clearInterval(interval);
+          return { isDisabled: false, remainingSeconds: 0 };
+        }
+        return { ...prev, remainingSeconds: prev.remainingSeconds - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendState.isDisabled]);
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -20,13 +38,10 @@ export default function SubscribeForm() {
     }
 
     setLoading(true);
+    setShowResend(false);
 
     try {
-      // API Base URL'i enviroment'tan alabiliriz (Vite ile: import.meta.env.VITE_API_URL) 
-      // Veya proxy ayarlanmışsa direkt '/api/subscribers' atılabilir.
-      // Biz şimdilik 'http://localhost:5000/api/subscribers' (veya VITE_API_URL) kullanalım.
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
       const response = await axios.post(`${apiUrl}/api/subscribers`, {
         email,
         name,
@@ -35,8 +50,13 @@ export default function SubscribeForm() {
 
       if (response.status === 202) {
         setToast({ type: 'success', message: 'Abonelik başarılı! Onay e-postanız gönderildi.' });
+        setSubmittedEmail(email);
+        setShowResend(true);
+        // İsteğe bağlı olarak input'ları temizleyebiliriz
         setEmail('');
         setName('');
+        // Resend butonunun cooldown'a girmesini istiyorsak:
+        // setResendState({ isDisabled: true, remainingSeconds: 120 });
       }
     } catch (err) {
       if (err.response) {
@@ -45,10 +65,46 @@ export default function SubscribeForm() {
         } else if (err.response.status === 429) {
           setToast({ type: 'error', message: 'Çok fazla istek attınız. Lütfen biraz bekleyin.' });
         } else {
-          setToast({ type: 'error', message: err.response.data?.message || 'Bir hata oluştu.' });
+          const msg = err.response.data?.message || 'Bir hata oluştu.';
+          if (msg === 'Onay e-postası zaten gönderildi.') {
+            setSubmittedEmail(email);
+            setShowResend(true);
+            setToast({ type: 'warning', message: 'Onay e-postası zaten gönderilmiş. İsterseniz tekrar gönderebilirsiniz.' });
+          } else {
+            setToast({ type: 'error', message: msg });
+          }
         }
       } else {
         setToast({ type: 'error', message: 'Sunucuya ulaşılamıyor.' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    const targetEmail = submittedEmail || email;
+    if (!targetEmail || resendState.isDisabled) return;
+    setLoading(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${apiUrl}/api/subscribers/resend-confirmation-v2`, { email: targetEmail });
+      setToast({ type: 'success', message: 'Yeni onay e-postası gönderildi!' });
+      
+      const nextAllowedAt = res.data?.nextAllowedAt;
+      if (nextAllowedAt) {
+        const remaining = Math.max(0, Math.ceil((new Date(nextAllowedAt) - Date.now()) / 1000));
+        setResendState({ isDisabled: true, remainingSeconds: remaining });
+      } else {
+        setResendState({ isDisabled: true, remainingSeconds: 120 });
+      }
+    } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = err.response.data?.retryAfterSeconds ?? 120;
+        setResendState({ isDisabled: true, remainingSeconds: retryAfter });
+        setToast({ type: 'error', message: err.response.data?.message || 'Lütfen bekleyin.' });
+      } else {
+        setToast({ type: 'error', message: err.response?.data?.message || 'Bir hata oluştu.' });
       }
     } finally {
       setLoading(false);
@@ -105,9 +161,9 @@ export default function SubscribeForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || resendState.isDisabled}
           className={`w-full py-3 rounded-lg font-medium text-white transition-all flex justify-center items-center ${
-            loading ? 'bg-primary-dark opacity-70 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark shadow-md hover:shadow-lg'
+            (loading || resendState.isDisabled) ? 'bg-primary-dark opacity-70 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark shadow-md hover:shadow-lg'
           }`}
         >
           {loading ? (
@@ -119,6 +175,24 @@ export default function SubscribeForm() {
             'Abone Ol'
           )}
         </button>
+
+        {showResend && (
+          <div className="mt-4 text-center text-sm text-text-muted">
+            <p>
+              Kodunuz gelmedi mi?{' '}
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={loading || resendState.isDisabled}
+                className="font-medium text-primary hover:text-primary-dark underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+              >
+                {resendState.isDisabled
+                  ? `Tekrar deneyin (${Math.floor(resendState.remainingSeconds / 60).toString().padStart(2, '0')}:${(resendState.remainingSeconds % 60).toString().padStart(2, '0')})`
+                  : 'Tekrar deneyin'}
+              </button>
+            </p>
+          </div>
+        )}
       </form>
     </div>
   );

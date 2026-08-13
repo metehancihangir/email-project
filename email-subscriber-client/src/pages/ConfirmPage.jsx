@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axiosInstance';
 import Toast from '../components/Toast';
+
+const COOLDOWN_SECONDS = 120; // 2 dakika
 
 export default function ConfirmPage() {
   const [searchParams] = useSearchParams();
@@ -14,11 +16,60 @@ export default function ConfirmPage() {
   const [email, setEmail] = useState('');
   const [isResending, setIsResending] = useState(false);
 
+  // ─── Faz 2 / 2.6.1: resendState ────────────────────────────────────────────
+  const [resendState, setResendState] = useState({
+    isDisabled: false,
+    remainingSeconds: 0,
+  });
+
+  // ─── Cooldown timer — her saniye azalt ─────────────────────────────────────
+  useEffect(() => {
+    if (!resendState.isDisabled) return;
+
+    const interval = setInterval(() => {
+      setResendState((prev) => {
+        const next = prev.remainingSeconds - 1;
+        // 2.6.3: 0'a ulaşınca isDisabled: false
+        if (next <= 0) {
+          clearInterval(interval);
+          return { isDisabled: false, remainingSeconds: 0 };
+        }
+        return { ...prev, remainingSeconds: next };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [resendState.isDisabled]);
+
+  // ─── Sayfa yenileme senkronizasyonu — 2.6.6 ────────────────────────────────
+  const syncResendStatus = useCallback(async (emailAddr) => {
+    if (!emailAddr) return;
+    try {
+      const res = await api.get(`/api/subscribers/resend-status?email=${encodeURIComponent(emailAddr)}`);
+      const { isDisabled, nextAllowedAt } = res.data;
+      if (isDisabled && nextAllowedAt) {
+        const remaining = Math.max(
+          0,
+          Math.ceil((new Date(nextAllowedAt) - Date.now()) / 1000)
+        );
+        setResendState({ isDisabled: remaining > 0, remainingSeconds: remaining });
+      }
+    } catch {
+      // Status endpoint hatası kritik değil — sessizce geç
+    }
+  }, []);
+
+  // ─── Onay token doğrulama ───────────────────────────────────────────────────
+  const hasConfirmed = React.useRef(false);
+
   useEffect(() => {
     if (!token) {
       setStatus('error');
       return;
     }
+
+    if (hasConfirmed.current) return;
+    hasConfirmed.current = true;
 
     api.get(`/api/subscribers/confirm/${token}`)
       .then(() => setStatus('success'))
@@ -31,17 +82,50 @@ export default function ConfirmPage() {
       });
   }, [token]);
 
+  // ─── Email değiştiğinde (expired ekranında) durum senkronize et ────────────
+  useEffect(() => {
+    if (status === 'expired' && email) {
+      syncResendStatus(email);
+    }
+  }, [email, status, syncResendStatus]);
+
+  // ─── mm:ss formatlama ────────────────────────────────────────────────────────
+  const formatTime = (seconds) => {
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // ─── Faz 2 / 2.6.2: Tekrar gönder handler ──────────────────────────────────
   const handleResend = async (e) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || resendState.isDisabled) return;
 
     setIsResending(true);
     try {
-      await api.post('/api/subscribers/resend-confirmation', { email });
+      // Yeni rate-limited endpoint'i kullan
+      const res = await api.post('/api/subscribers/resend-confirmation-v2', { email });
       setToast({ type: 'success', message: 'Yeni onay e-postası gönderildi!' });
-      setTimeout(() => navigate('/'), 3000);
+
+      // 2.6.3: 200 OK — cooldown başlat
+      if (res.data?.nextAllowedAt) {
+        const remaining = Math.max(
+          0,
+          Math.ceil((new Date(res.data.nextAllowedAt) - Date.now()) / 1000)
+        );
+        setResendState({ isDisabled: true, remainingSeconds: remaining });
+      } else {
+        setResendState({ isDisabled: true, remainingSeconds: COOLDOWN_SECONDS });
+      }
     } catch (err) {
-      setToast({ type: 'error', message: err.response?.data?.message || 'Bir hata oluştu.' });
+      if (err.response?.status === 429) {
+        // 2.6.4: 429 — backend'in verdiği retryAfterSeconds ile senkronize et
+        const retryAfterSeconds = err.response.data?.retryAfterSeconds ?? COOLDOWN_SECONDS;
+        setResendState({ isDisabled: true, remainingSeconds: retryAfterSeconds });
+        setToast({ type: 'error', message: err.response.data?.message || 'Lütfen 2 dakika bekleyin.' });
+      } else {
+        setToast({ type: 'error', message: err.response?.data?.message || 'Bir hata oluştu.' });
+      }
     } finally {
       setIsResending(false);
     }
@@ -114,13 +198,27 @@ export default function ConfirmPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 />
               </div>
+
+              {/* 2.6.5: Cooldown mesajı + aria-disabled */}
+              {resendState.isDisabled && (
+                <p className="text-sm text-text-muted text-center" role="status" aria-live="polite">
+                  Yeni kod talep etmek için lütfen{' '}
+                  <span className="font-semibold text-primary">{formatTime(resendState.remainingSeconds)}</span>{' '}
+                  bekleyin.
+                </p>
+              )}
+
               <button
                 type="submit"
-                disabled={isResending}
-                className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-medium py-3 px-4 rounded-xl transition-colors flex justify-center"
+                id="resend-confirmation-btn"
+                disabled={isResending || resendState.isDisabled}
+                aria-disabled={isResending || resendState.isDisabled}
+                className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-xl transition-colors flex justify-center"
               >
                 {isResending ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : resendState.isDisabled ? (
+                  `Yeni Kod Gönder (${formatTime(resendState.remainingSeconds)})`
                 ) : (
                   'Yeni Onay E-postası Gönder'
                 )}

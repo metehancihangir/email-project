@@ -1,4 +1,5 @@
 using EmailSubscriber.API.Data;
+using EmailSubscriber.API.DTOs;
 using EmailSubscriber.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -164,5 +165,92 @@ public class SubscriberService : ISubscriberService
         await _context.SaveChangesAsync();
 
         return (200, "Abonelik iptal edildi.");
+    }
+
+    // ─── Faz 2: Rate-Limited Resend (Seçenek B — DB tabanlı) ────────────────
+
+    /// <summary>
+    /// 2.3.x: Cooldown kontrolü atomic UPDATE ile yapılır.
+    /// Race condition koruması: tek SQL statement içinde hem kontrol hem güncelleme.
+    /// </summary>
+    public async Task<ResendCodeResult> ResendConfirmationWithRateLimitAsync(string email)
+    {
+        const int CooldownMinutes = 2;
+        const int TokenTtlHours = 24;
+        var now = DateTime.UtcNow;
+        var cooldownThreshold = now.AddMinutes(-CooldownMinutes);
+
+        // 2.3.3: Atomic conditional UPDATE — okuma + yazma tek statement'ta.
+        // Etkilenen satır sayısı 0 ise => subscriber yok, onaylı, veya cooldown aktif.
+        var affected = await _context.Database.ExecuteSqlRawAsync(
+            @"UPDATE Subscribers
+              SET LastCodeRequestedAt = {0}
+              WHERE Email = {1}
+                AND IsConfirmed = 0
+                AND (LastCodeRequestedAt IS NULL OR LastCodeRequestedAt < {2})",
+            now, email, cooldownThreshold);
+
+        if (affected == 0)
+        {
+            // Subscriber bulunamadı mı, onaylı mı, cooldown mu? Ayırt etmemek için:
+            var sub = await _context.Subscribers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Email == email);
+
+            // 2.4.5: Email enumeration koruması — bulunamadı/onaylı için aynı generic mesaj
+            if (sub == null || sub.IsConfirmed)
+                return ResendCodeResult.GenericInvalid();
+
+            // Cooldown aktif — kalan süreyi hesapla
+            var nextAllowed = sub.LastCodeRequestedAt!.Value.AddMinutes(CooldownMinutes);
+            var retryAfterSeconds = (int)Math.Ceiling((nextAllowed - now).TotalSeconds);
+            return ResendCodeResult.RateLimited(Math.Max(retryAfterSeconds, 1), nextAllowed);
+        }
+
+        // 2.3.4: Cooldown geçti — yeni token üret ve DB'yi güncelle
+        var subscriber = await _context.Subscribers.FirstAsync(s => s.Email == email);
+        subscriber.ConfirmationToken = Guid.NewGuid().ToString("N");
+        subscriber.ConfirmationTokenExpiresAt = now.AddHours(TokenTtlHours);
+        await _context.SaveChangesAsync();
+
+        // 2.3.5: Mevcut kuyruk üzerinden gönder
+        string confirmUrl = $"{_frontendUrl}/confirm?token={subscriber.ConfirmationToken}";
+        string htmlBody = await _templateService.GetConfirmationEmailHtmlAsync(subscriber.Name ?? "", confirmUrl);
+
+        var job = new EmailSubscriber.API.Queue.EmailJob(
+            To: subscriber.Email,
+            ToName: subscriber.Name,
+            Subject: "E-Bülten Abonelik Onayı",
+            HtmlBody: htmlBody
+        );
+        _emailQueueService.Enqueue(job);
+        _logger.LogInformation("Rate-limited resend: yeni onay e-postası kuyruğa eklendi: {Email}", email);
+
+        // 2.3.6: nextAllowedAt = şimdiden 2 dakika sonra
+        var nextAllowedAt = now.AddMinutes(CooldownMinutes);
+        return ResendCodeResult.Success(nextAllowedAt);
+    }
+
+    /// <summary>
+    /// 2.5.1-2.5.2: Sayfa yenileme koruması — tek source of truth (LastCodeRequestedAt).
+    /// Frontend mount olduğunda bu endpoint'i çağırarak timer'ı senkronize eder.
+    /// </summary>
+    public async Task<(bool IsDisabled, DateTime? NextAllowedAt)> GetResendStatusAsync(string email)
+    {
+        const int CooldownMinutes = 2;
+        var now = DateTime.UtcNow;
+
+        var sub = await _context.Subscribers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Email == email && !s.IsConfirmed);
+
+        if (sub?.LastCodeRequestedAt == null)
+            return (false, null); // Hiç istek yapılmamış veya subscriber yok
+
+        var nextAllowed = sub.LastCodeRequestedAt.Value.AddMinutes(CooldownMinutes);
+        if (nextAllowed > now)
+            return (true, nextAllowed); // Cooldown aktif
+
+        return (false, null); // Cooldown süresi dolmuş
     }
 }

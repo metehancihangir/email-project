@@ -113,6 +113,9 @@ namespace EmailSubscriber.API.Migrations
                     b.Property<bool>("IsConfirmed")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<DateTime?>("LastCodeRequestedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Name")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -134,6 +137,9 @@ namespace EmailSubscriber.API.Migrations
 
                     b.HasIndex("UnsubscribeToken")
                         .IsUnique();
+
+                    b.HasIndex("Email", "LastCodeRequestedAt")
+                        .HasDatabaseName("idx_subscribers_email_lastrequested");
 
                     b.ToTable("Subscribers");
                 });

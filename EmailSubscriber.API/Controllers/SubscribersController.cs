@@ -62,6 +62,10 @@ public class SubscribersController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Eski resend endpoint'i (rate-limiting yok) — geriye dönük uyumluluk için korunuyor.
+    /// Yeni istekler için resend-confirmation-v2 kullanılmalı.
+    /// </summary>
     [HttpPost("resend-confirmation")]
     public async Task<IActionResult> ResendConfirmation([FromBody] ResendRequest request)
     {
@@ -76,6 +80,68 @@ public class SubscribersController : ControllerBase
         return StatusCode(statusCode, new { message });
     }
 
+    // ─── Faz 2: Rate-Limited Resend Endpoints ────────────────────────────────
+
+    /// <summary>
+    /// Faz 2 / 2.4.x — Rate-limited onay kodu tekrar gönderme.
+    /// 200 OK: Kod gönderildi + nextAllowedAt
+    /// 429 Too Many Requests: Cooldown aktif + Retry-After header + retryAfterSeconds
+    /// 400 Bad Request: Geçersiz email (enumeration-safe generic mesaj)
+    /// </summary>
+    [HttpPost("resend-confirmation-v2")]
+    public async Task<IActionResult> ResendConfirmationWithRateLimit([FromBody] ResendRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _subscriberService.ResendConfirmationWithRateLimitAsync(request.Email);
+
+        if (result.IsSuccess)
+        {
+            // 2.4.2: 200 OK + nextAllowedAt
+            return Ok(new
+            {
+                message = result.Message,
+                nextAllowedAt = result.NextAllowedAt?.ToString("o") // ISO 8601
+            });
+        }
+
+        if (result.IsRateLimited)
+        {
+            // 2.4.3: 429 + retryAfterSeconds
+            // 2.4.4: Standart Retry-After HTTP header
+            Response.Headers["Retry-After"] = result.RetryAfterSeconds!.Value.ToString();
+            return StatusCode(429, new
+            {
+                message = result.Message,
+                retryAfterSeconds = result.RetryAfterSeconds,
+                nextAllowedAt = result.NextAllowedAt?.ToString("o")
+            });
+        }
+
+        // 2.4.5: Email enumeration koruması — generic 400
+        return BadRequest(new { message = result.Message });
+    }
+
+    /// <summary>
+    /// Faz 2 / 2.5.x — Sayfa yenileme durumunda client-side state senkronizasyonu.
+    /// Frontend component mount olduğunda LastCodeRequestedAt'ten nextAllowedAt hesaplar.
+    /// </summary>
+    [HttpGet("resend-status")]
+    public async Task<IActionResult> GetResendStatus([FromQuery] string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return BadRequest(new { message = "Email parametresi gerekli." });
+
+        var (isDisabled, nextAllowedAt) = await _subscriberService.GetResendStatusAsync(email);
+
+        return Ok(new
+        {
+            isDisabled,
+            nextAllowedAt = nextAllowedAt?.ToString("o") // ISO 8601, null ise cooldown yok
+        });
+    }
+
     [HttpGet("unsubscribe/{token}")]
     public async Task<IActionResult> Unsubscribe(string token)
     {
@@ -87,3 +153,4 @@ public class SubscribersController : ControllerBase
         return StatusCode(statusCode, new { message });
     }
 }
+

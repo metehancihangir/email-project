@@ -12,4 +12,11 @@ public class Subscriber
     public string? ConfirmationToken { get; set; }
     public DateTime? ConfirmationTokenExpiresAt { get; set; }
     public string? UnsubscribeToken { get; set; }
+
+    /// <summary>
+    /// Faz 2 — Seçenek B (DB tabanlı rate-limiting).
+    /// Son onay kodu isteğinin zamanı. NULL = hiç istek yapılmamış (ilk istekte cooldown uygulanmaz).
+    /// 2 dakikalık cooldown kontrolü için kullanılır.
+    /// </summary>
+    public DateTime? LastCodeRequestedAt { get; set; }
 }

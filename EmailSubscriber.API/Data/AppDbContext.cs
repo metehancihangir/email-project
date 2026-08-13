@@ -30,6 +30,11 @@ public class AppDbContext : DbContext
             entity.Property(s => s.ConfirmationToken).HasMaxLength(255);
             entity.Property(s => s.UnsubscribeToken).HasMaxLength(64);
             entity.HasIndex(s => s.UnsubscribeToken).IsUnique();
+
+            // Faz 2 — 2.2.2: Cooldown kontrol sorgusu için composite index.
+            // idx_subscribers_email_lastrequested
+            entity.HasIndex(s => new { s.Email, s.LastCodeRequestedAt })
+                  .HasDatabaseName("idx_subscribers_email_lastrequested");
         });
 
         modelBuilder.Entity<Campaign>(entity =>
