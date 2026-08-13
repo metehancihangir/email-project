@@ -110,6 +110,11 @@ public class AINewsletterJob : BackgroundService
         // E-posta içerisinde ** (çift yıldız) görünmemesi için bunları <b> etiketine çeviriyoruz.
         htmlContent = System.Text.RegularExpressions.Regex.Replace(htmlContent, @"\*\*(.*?)\*\*", "<b>$1</b>");
 
+        // XSS (Cross-Site Scripting) Koruması: Yapay zekanın zararlı bir script üretme ihtimaline karşı
+        // HTML içeriğini HtmlSanitizer ile temizliyoruz (Sadece güvenli etiketler kalır)
+        var sanitizer = new Ganss.Xss.HtmlSanitizer();
+        htmlContent = sanitizer.Sanitize(htmlContent);
+
         // AI'ın ürettiği HTML'den <h2> başlığını yakalayarak konuyu bulalım
         string extractedTopic = "Yeni Bülten Konusu";
         var match = System.Text.RegularExpressions.Regex.Match(htmlContent, @"<h2>(.*?)</h2>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);

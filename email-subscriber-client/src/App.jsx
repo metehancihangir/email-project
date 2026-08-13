@@ -4,6 +4,7 @@ import ConfirmPage from './pages/ConfirmPage';
 import UnsubscribePage from './pages/UnsubscribePage';
 import PreferencesPage from './pages/PreferencesPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import HelpPage from './pages/HelpPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/admin/AdminLayout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/preferences" element={<PreferencesPage />} />
         <Route path="/gizlilik-politikasi" element={<PrivacyPolicyPage />} />
         <Route path="/kullanim-kosullari" element={<PrivacyPolicyPage />} />
+        <Route path="/yardim" element={<HelpPage />} />
 
         {/* ─── Admin Routes ─── */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

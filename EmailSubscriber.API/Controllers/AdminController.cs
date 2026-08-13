@@ -123,6 +123,25 @@ public class AdminController : ControllerBase
         if (file.Length > 5 * 1024 * 1024)
             return BadRequest(new { message = "Dosya boyutu 5MB'dan küçük olmalıdır." });
 
+        // Resim Yükleme Zafiyeti (Magic Number Bypass Koruması):
+        // Sadece uzantıya güvenmek yerine dosyanın ilk byte'larını (header) okuyup gerçekten resim formatında olup olmadığını teyit ediyoruz.
+        using (var stream = file.OpenReadStream())
+        {
+            var buffer = new byte[12];
+            await stream.ReadAsync(buffer, 0, buffer.Length);
+            
+            bool isJpg = buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF;
+            bool isPng = buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E && buffer[3] == 0x47;
+            bool isGif = buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46;
+            bool isWebp = buffer[0] == 0x52 && buffer[1] == 0x49 && buffer[2] == 0x46 && buffer[3] == 0x46 && 
+                          buffer[8] == 0x57 && buffer[9] == 0x45 && buffer[10] == 0x42 && buffer[11] == 0x50; // WEBP header
+
+            if (!isJpg && !isPng && !isGif && !isWebp)
+            {
+                return BadRequest(new { message = "Güvenlik İhlali: Seçilen dosya sahte bir görsel veya desteklenmeyen bir formattır." });
+            }
+        }
+
         var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
         if (!Directory.Exists(uploadsFolder))
             Directory.CreateDirectory(uploadsFolder);

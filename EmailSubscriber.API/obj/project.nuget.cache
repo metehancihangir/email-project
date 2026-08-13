@@ -1,12 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "gfQ2UVFAt6k=",
+  "dgSpecHash": "zKhehvgB2o4=",
   "success": true,
   "projectFilePath": "C:\\Users\\Metehan\\Desktop\\email-project\\EmailSubscriber.API\\EmailSubscriber.API.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Metehan\\.nuget\\packages\\anglesharp\\1.7.1\\anglesharp.1.7.1.nupkg.sha512",
+    "C:\\Users\\Metehan\\.nuget\\packages\\anglesharp.css\\1.0.1\\anglesharp.css.1.0.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\bouncycastle.cryptography\\2.6.2\\bouncycastle.cryptography.2.6.2.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\htmlagilitypack\\1.12.4\\htmlagilitypack.1.12.4.nupkg.sha512",
+    "C:\\Users\\Metehan\\.nuget\\packages\\htmlsanitizer\\9.2.995\\htmlsanitizer.9.2.995.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\mailkit\\4.12.1\\mailkit.4.12.1.nupkg.sha512",
     "C:\\Users\\Metehan\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.7\\microsoft.aspnetcore.authentication.jwtbearer.9.0.7.nupkg.sha512",
