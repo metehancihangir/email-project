@@ -41,7 +41,8 @@ public class MailKitEmailService : IEmailService
         }
 
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress("Email Subscriber", user));
+        message.From.Add(new MailboxAddress("SUBMAIL", user));
+        message.ReplyTo.Add(new MailboxAddress("No Reply", "noreply@submail.com.tr"));
         message.To.Add(new MailboxAddress(toName ?? to, to));
         message.Subject = subject;
 

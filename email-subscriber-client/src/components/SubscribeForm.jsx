@@ -25,7 +25,8 @@ export default function SubscribeForm() {
   const categories = [
     { id: "Mitoloji", label: "Mitoloji 🏛️" },
     { id: "Bilim", label: "Bilim 🔬" },
-    { id: "Finans", label: "Finans 💰" }
+    { id: "Finans", label: "Finans 💰" },
+    { id: "Politika", label: "Politika 🌍" }
   ];
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

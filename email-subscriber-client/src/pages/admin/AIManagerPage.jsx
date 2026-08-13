@@ -11,7 +11,8 @@ export default function AIManagerPage() {
   const categories = [
     { id: 'Mitoloji', name: 'Mitoloji', icon: '🏛️', color: 'bg-amber-100 text-amber-700' },
     { id: 'Finans', name: 'Finans', icon: '📈', color: 'bg-emerald-100 text-emerald-700' },
-    { id: 'Bilim', name: 'Bilim', icon: '🔬', color: 'bg-blue-100 text-blue-700' }
+    { id: 'Bilim', name: 'Bilim', icon: '🔬', color: 'bg-blue-100 text-blue-700' },
+    { id: 'Politika', name: 'Politika', icon: '🌍', color: 'bg-purple-100 text-purple-700' }
   ];
 
   const handleTriggerClick = (category) => {

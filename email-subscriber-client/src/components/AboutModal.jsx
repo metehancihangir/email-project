@@ -35,7 +35,7 @@ export default function AboutModal({ isOpen, onClose }) {
             
             <h3 className="text-lg font-semibold text-text mt-6">Uygulamamız Ne İşe Yarıyor?</h3>
             <p>
-              SUBMAIL, <strong>Finans</strong>, <strong>Bilim</strong> ve <strong>Mitoloji</strong> alanlarındaki en heyecan verici gelişmeleri, haftalık periyotlarla doğrudan e-posta kutunuza ulaştırır.
+              SUBMAIL, <strong>Finans</strong>, <strong>Bilim</strong>, <strong>Mitoloji</strong> ve <strong>Politika</strong> alanlarındaki en heyecan verici gelişmeleri, haftalık periyotlarla doğrudan e-posta kutunuza ulaştırır.
             </p>
             <ul className="list-disc pl-5 space-y-2 mt-2">
               <li><strong>Akıllı İçerik:</strong> Gelişmiş yapay zeka altyapımız, binlerce haberi ve kaynağı tarayarak sadece okumaya değer, en rafine bilgileri sizin için derler.</li>

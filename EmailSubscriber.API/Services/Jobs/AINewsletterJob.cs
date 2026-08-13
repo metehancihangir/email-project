@@ -47,6 +47,9 @@ public class AINewsletterJob : BackgroundService
                 // Mitoloji Pazar Sabah 10:00
                 else if (localTime.DayOfWeek == DayOfWeek.Sunday && localTime.Hour == 10)
                     categoryToRun = "Mitoloji";
+                // Politika Cuma Akşam 20:00
+                else if (localTime.DayOfWeek == DayOfWeek.Friday && localTime.Hour == 20)
+                    categoryToRun = "Politika";
 
                 if (categoryToRun != null)
                 {
@@ -88,6 +91,7 @@ public class AINewsletterJob : BackgroundService
         {
             DayOfWeek.Monday or DayOfWeek.Thursday => "Finans",
             DayOfWeek.Tuesday or DayOfWeek.Friday => "Bilim",
+            DayOfWeek.Wednesday => "Politika",
             _ => "Mitoloji"
         };
 
@@ -129,13 +133,14 @@ public class AINewsletterJob : BackgroundService
             "mitoloji" => "🏛️",
             "finans" => "📈",
             "bilim" => "🔬",
+            "politika" => "🌍",
             _ => "✨"
         };
 
         string subject = $"SUBMAIL {category} {categoryEmoji}: {extractedTopic} 🌟";
 
         // Konuya özel görseli al
-        string? imageUrl = await aiService.GetImageUrlForTopicAsync(category, extractedTopic);
+        string? imageUrl = await aiService.GetImageUrlForTopicAsync(category, extractedTopic, htmlContent);
         // Bu kategoriyi isteyen aboneleri bul
         var subscribers = await context.Subscribers
             .Where(s => s.IsActive && s.IsConfirmed)
