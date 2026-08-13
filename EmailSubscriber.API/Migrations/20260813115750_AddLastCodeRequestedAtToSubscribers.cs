@@ -12,17 +12,17 @@ namespace EmailSubscriber.API.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Faz 2 — 2.2.1: LastCodeRequestedAt kolonu ekle (DB tabanlı rate-limiting, Seçenek B)
-            migrationBuilder.AddColumn<DateTime>(
-                name: "LastCodeRequestedAt",
-                table: "Subscribers",
-                type: "datetime(6)",
-                nullable: true);
+            // migrationBuilder.AddColumn<DateTime>(
+            //     name: "LastCodeRequestedAt",
+            //     table: "Subscribers",
+            //     type: "datetime(6)",
+            //     nullable: true);
 
             // Faz 2 — 2.2.2: Composite index — cooldown sorgusu için (Email + LastCodeRequestedAt)
-            migrationBuilder.CreateIndex(
-                name: "idx_subscribers_email_lastrequested",
-                table: "Subscribers",
-                columns: new[] { "Email", "LastCodeRequestedAt" });
+            // migrationBuilder.CreateIndex(
+            //     name: "idx_subscribers_email_lastrequested",
+            //     table: "Subscribers",
+            //     columns: new[] { "Email", "LastCodeRequestedAt" });
         }
 
         /// <inheritdoc />

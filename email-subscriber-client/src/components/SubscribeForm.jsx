@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { isValidEmail } from '../utils/validation';
 import Toast from './Toast';
 import PrivacyModal from './PrivacyModal';
+
+
 
 export default function SubscribeForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '' });
+  const categoryInputRef = useRef(null);
 
   const closeToast = () => setToast({ message: '', type: '' });
 
@@ -17,6 +20,23 @@ export default function SubscribeForm() {
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [gdprAccepted, setGdprAccepted] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+
+  const categories = [
+    { id: "Mitoloji", label: "Mitoloji 🏛️" },
+    { id: "Bilim", label: "Bilim 🔬" },
+    { id: "Finans", label: "Finans 💰" }
+  ];
+  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const handleCategoryChange = (cat) => {
+    if (selectedCategories.includes(cat)) {
+      setSelectedCategories(prev => prev.filter(c => c !== cat));
+    } else {
+      setSelectedCategories(prev => [...prev, cat]);
+    }
+  };
 
   useEffect(() => {
     if (!resendState.isDisabled) return;
@@ -32,11 +52,25 @@ export default function SubscribeForm() {
     return () => clearInterval(interval);
   }, [resendState.isDisabled]);
   
+  useEffect(() => {
+    if (categoryInputRef.current) {
+      if (selectedCategories.length === 0) {
+        categoryInputRef.current.setCustomValidity('Lütfen en az 1 konu seçin.');
+      } else {
+        categoryInputRef.current.setCustomValidity('');
+      }
+    }
+  }, [selectedCategories]);
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!isValidEmail(email)) {
       setToast({ type: 'error', message: 'Geçersiz e-posta adresi.' });
+      return;
+    }
+
+    if (selectedCategories.length === 0) {
       return;
     }
 
@@ -48,6 +82,7 @@ export default function SubscribeForm() {
       const response = await axios.post(`${apiUrl}/api/subscribers`, {
         email,
         name,
+        interests: selectedCategories.join(','),
         website: '' // Honeypot boş olmalı
       });
 
@@ -160,6 +195,79 @@ export default function SubscribeForm() {
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
           />
+        </div>
+
+        <div className="mb-6 relative">
+          <label className="block text-sm font-medium text-text-muted mb-2">
+            İlgilendiğiniz Konular (En az 1) <span className="text-red-500">*</span>
+          </label>
+          <div 
+            className="w-full min-h-[42px] px-4 py-2 border border-gray-300 rounded-lg bg-surface flex items-center justify-between cursor-pointer transition-all hover:border-primary"
+            onClick={() => !loading && setIsDropdownOpen(!isDropdownOpen)}
+          >
+            <div className="flex flex-wrap gap-2">
+              {selectedCategories.length === 0 ? (
+                <span className="text-gray-400">Konu seçiniz...</span>
+              ) : (
+                selectedCategories.map(cat => {
+                  const categoryObj = categories.find(c => c.id === cat);
+                  return (
+                    <span key={cat} className="bg-primary/10 text-primary text-sm font-medium px-2 py-1 rounded-md flex items-center gap-1">
+                      {categoryObj?.label}
+                      <button 
+                        type="button" 
+                        onClick={(e) => { e.stopPropagation(); handleCategoryChange(cat); }}
+                        className="hover:text-primary-dark focus:outline-none"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  )
+                })
+              )}
+            </div>
+            <svg className={`w-5 h-5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          
+          {/* Native validation catch for custom dropdown */}
+          <input 
+            ref={categoryInputRef}
+            type="text" 
+            className="opacity-0 absolute inset-0 w-full h-full z-[-1]" 
+            required 
+            value={selectedCategories.join(',')} 
+            onChange={() => {}} 
+          />
+
+          {isDropdownOpen && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+              {categories.map(cat => {
+                const isSelected = selectedCategories.includes(cat.id);
+                return (
+                  <div 
+                    key={cat.id} 
+                    className={`px-4 py-3 cursor-pointer flex items-center transition-colors ${
+                      isSelected ? 'bg-primary/5 text-primary' : 'hover:bg-gray-50 text-text'
+                    }`}
+                    onClick={() => {
+                      handleCategoryChange(cat.id);
+                    }}
+                  >
+                    <div className={`w-5 h-5 mr-3 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}`}>
+                      {isSelected && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    {cat.label}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="mb-6 flex items-start">

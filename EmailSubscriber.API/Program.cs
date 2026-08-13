@@ -72,20 +72,52 @@ try
 
     builder.Services.AddSingleton<EmailSubscriber.API.Queue.IEmailQueueService, EmailSubscriber.API.Queue.EmailQueueService>();
     builder.Services.AddHostedService<EmailSubscriber.API.Queue.EmailWorker>();
+    builder.Services.AddHostedService<EmailSubscriber.API.Services.Jobs.AINewsletterJob>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IEmailService, EmailSubscriber.API.Services.MailKitEmailService>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IEmailTemplateService, EmailSubscriber.API.Services.EmailTemplateService>();
+    builder.Services.AddHttpClient<EmailSubscriber.API.Services.AI.IAIService, EmailSubscriber.API.Services.AI.GeminiService>();
 
     builder.Services.AddScoped<EmailSubscriber.API.Services.ISubscriberService, EmailSubscriber.API.Services.SubscriberService>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IAdminService, EmailSubscriber.API.Services.AdminService>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.ITrackingService, EmailSubscriber.API.Services.TrackingService>();
 
     builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "EmailSubscriber API", Version = "v1" });
+        c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header. Örnek: 'Bearer {token}'",
+            Name = "Authorization",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
+        c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    {
+                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
 
     // ─── Build App ───────────────────────────────────────────────────────────
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();  // req. 4.3 — HTTPS zorunluluğu
+    
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "EmailSubscriber API v1"));
     
     // Enable serving static files from wwwroot
     app.UseStaticFiles();

@@ -32,7 +32,7 @@ public class SubscribersController : ControllerBase
         }
 
         // 3. Servis katmanını çağır
-        var (isSuccess, message) = await _subscriberService.SubscribeAsync(request.Email, request.Name);
+        var (isSuccess, message) = await _subscriberService.SubscribeAsync(request.Email, request.Name, request.Interests);
 
         if (!isSuccess)
         {
@@ -150,6 +150,28 @@ public class SubscribersController : ControllerBase
         if (statusCode == 200)
             return Ok(new { message });
             
+        return StatusCode(statusCode, new { message });
+    }
+
+    [HttpGet("preferences/{token}")]
+    public async Task<IActionResult> GetPreferences(string token)
+    {
+        var (statusCode, message, interests) = await _subscriberService.GetPreferencesAsync(token);
+
+        if (statusCode == 200)
+            return Ok(new { message, interests });
+
+        return StatusCode(statusCode, new { message });
+    }
+
+    [HttpPut("preferences/{token}")]
+    public async Task<IActionResult> UpdatePreferences(string token, [FromBody] UpdatePreferencesRequest request)
+    {
+        var (statusCode, message) = await _subscriberService.UpdatePreferencesAsync(token, request.Interests);
+
+        if (statusCode == 200)
+            return Ok(new { message });
+
         return StatusCode(statusCode, new { message });
     }
 }

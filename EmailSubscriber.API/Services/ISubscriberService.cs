@@ -4,7 +4,7 @@ namespace EmailSubscriber.API.Services;
 
 public interface ISubscriberService
 {
-    Task<(bool IsSuccess, string Message)> SubscribeAsync(string email, string? name);
+    Task<(bool IsSuccess, string Message)> SubscribeAsync(string email, string? name, string? interests = null);
     Task<(int StatusCode, string Message)> ConfirmSubscriberAsync(string token);
     Task<(int StatusCode, string Message)> ResendConfirmationAsync(string email);
     Task<ResendCodeResult> ResendConfirmationWithRateLimitAsync(string email);
@@ -16,5 +16,8 @@ public interface ISubscriberService
     Task<(bool IsDisabled, DateTime? NextAllowedAt)> GetResendStatusAsync(string email);
 
     Task<(int StatusCode, string Message)> UnsubscribeAsync(string token);
+    
+    Task<(int StatusCode, string Message, string? Interests)> GetPreferencesAsync(string token);
+    Task<(int StatusCode, string Message)> UpdatePreferencesAsync(string token, string? interests);
 }
 

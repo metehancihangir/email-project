@@ -100,6 +100,15 @@ public class AdminController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("campaigns/{id}/content")]
+    public async Task<IActionResult> GetCampaignContent(int id)
+    {
+        var content = await _adminService.GetCampaignContentAsync(id);
+        if (content == null) return NotFound();
+        return Ok(new { htmlBody = content });
+    }
+
+    [Authorize]
     [HttpPost("images/upload")]
     public async Task<IActionResult> UploadImage(IFormFile file)
     {
@@ -130,6 +139,32 @@ public class AdminController : ControllerBase
         var imageUrl = $"{baseUrl}/uploads/images/{uniqueFileName}";
 
         return Ok(new { url = imageUrl });
+    }
+
+    [Authorize]
+    [HttpPost("trigger-ai")]
+    public async Task<IActionResult> TriggerAINewsletter([FromQuery] string? category, [FromServices] IServiceProvider serviceProvider)
+    {
+        var hostedServices = serviceProvider.GetServices<Microsoft.Extensions.Hosting.IHostedService>();
+        var aiJob = hostedServices.OfType<EmailSubscriber.API.Services.Jobs.AINewsletterJob>().FirstOrDefault();
+
+        if (aiJob == null)
+            return StatusCode(500, new { message = "AINewsletterJob bulunamadı." });
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await aiJob.GenerateAndSendNewsletterAsync(category);
+            }
+            catch (Exception ex)
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<AdminController>>();
+                logger.LogError(ex, "Yapay zeka bülteni manuel tetiklemesinde hata oluştu.");
+            }
+        });
+
+        return Ok(new { message = "Yapay zeka bülten üretimi tetiklendi. Arka planda oluşturulup gönderilecek." });
     }
 
     [Authorize]

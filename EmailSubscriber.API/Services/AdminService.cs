@@ -163,11 +163,26 @@ public class AdminService : IAdminService
         return growthData;
     }
 
-    public async Task<(int campaignId, int recipientCount)> SendNewsletterAsync(string subject, string htmlBody)
+    public Task<(int campaignId, int recipientCount)> SendNewsletterAsync(string subject, string htmlBody)
     {
-        var activeSubscribers = await _context.Subscribers
-            .Where(s => s.IsActive && s.IsConfirmed)
-            .ToListAsync();
+        return SendInternalAsync(subject, htmlBody, null);
+    }
+
+    public Task<(int campaignId, int recipientCount)> SendTargetedNewsletterAsync(string subject, string htmlBody, List<int> subscriberIds)
+    {
+        return SendInternalAsync(subject, htmlBody, subscriberIds);
+    }
+
+    private async Task<(int campaignId, int recipientCount)> SendInternalAsync(string subject, string htmlBody, List<int>? targetSubscriberIds)
+    {
+        var query = _context.Subscribers.Where(s => s.IsActive && s.IsConfirmed);
+        
+        if (targetSubscriberIds != null)
+        {
+            query = query.Where(s => targetSubscriberIds.Contains(s.Id));
+        }
+
+        var activeSubscribers = await query.ToListAsync();
 
         int recipientCount = activeSubscribers.Count;
 
@@ -230,7 +245,14 @@ public class AdminService : IAdminService
             var unsubToken = sub.UnsubscribeToken;
             string frontendUrl = _configuration["App:BaseUrl"] ?? "http://localhost:5173";
             string unsubscribeLink = $"{frontendUrl}/unsubscribe?token={unsubToken}";
-            string finalBody = bodyWithTracking + $"<br><br><small><a href='{unsubscribeLink}'>Abonelikten Ayrıl</a></small>";
+            string preferencesLink = $"{frontendUrl}/preferences?token={unsubToken}";
+            
+            string finalBody = bodyWithTracking + $@"
+            <br><br>
+            <div style='text-align: center; color: #999; font-size: 12px;'>
+                <p>Bülten konularınızı değiştirmek isterseniz <a href='{preferencesLink}' style='color: #666; text-decoration: underline;'>Tercihleri Güncelle</a> sayfasına gidebilirsiniz.</p>
+                <p>Artık bizden e-posta almak istemiyorsanız <a href='{unsubscribeLink}' style='color: #666; text-decoration: underline;'>Abonelikten Ayrılabilirsiniz</a>.</p>
+            </div>";
 
             var job = new EmailSubscriber.API.Queue.EmailJob(sub.Email, sub.Name, subject, finalBody, recipient.Id);
             _emailQueue.Enqueue(job);
@@ -278,5 +300,11 @@ public class AdminService : IAdminService
             Clicked = clicked,
             ClickRate = sent > 0 ? Math.Round((double)clicked / sent * 100, 2) : 0
         };
+    }
+
+    public async Task<string?> GetCampaignContentAsync(int id)
+    {
+        var campaign = await _context.Campaigns.FindAsync(id);
+        return campaign?.HtmlBody;
     }
 }

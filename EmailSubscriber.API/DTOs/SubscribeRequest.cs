@@ -10,6 +10,8 @@ public record SubscribeRequest(
     [MaxLength(100)]
     string? Name,
     
+    string? Interests,
+
     // Botları engellemek için honeypot alanı.
     string? Website
 );
