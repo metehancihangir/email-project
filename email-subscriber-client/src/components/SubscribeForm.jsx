@@ -153,8 +153,8 @@ export default function SubscribeForm() {
     <div className="w-full max-w-md mx-auto relative">
       <Toast type={toast.type} message={toast.message} onClose={closeToast} />
       
-      <form onSubmit={handleSubmit} className="bg-surface-alt p-6 md:p-8 rounded-xl shadow-lg border border-gray-100">
-        <h2 className="text-2xl font-semibold mb-6 text-text">Bültenimize Katılın</h2>
+      <form onSubmit={handleSubmit} className="p-6 md:p-8">
+        <h2 className="text-3xl font-extrabold mb-6 text-text drop-shadow-sm">Bültenimize Katılın</h2>
         
         {/* Honeypot Field */}
         <input 

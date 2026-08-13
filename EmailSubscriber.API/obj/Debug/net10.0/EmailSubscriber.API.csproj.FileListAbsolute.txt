@@ -146,3 +146,6 @@ C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\Mic
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\AngleSharp.dll
+C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\AngleSharp.Css.dll
+C:\Users\Metehan\Desktop\email-project\EmailSubscriber.API\bin\Debug\net10.0\HtmlSanitizer.dll

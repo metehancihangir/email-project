@@ -61,6 +61,10 @@
               "target": "Package",
               "version": "[1.12.4, )"
             },
+            "HtmlSanitizer": {
+              "target": "Package",
+              "version": "[9.2.995, )"
+            },
             "MailKit": {
               "target": "Package",
               "version": "[4.12.1, )"
