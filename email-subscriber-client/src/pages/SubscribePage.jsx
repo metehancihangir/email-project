@@ -1,13 +1,19 @@
 import Navbar from '../components/Navbar';
 import SubscribeForm from '../components/SubscribeForm';
 import Logo from '../components/Logo';
+import { motion } from 'framer-motion';
 
 export default function SubscribePage() {
   return (
     <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 flex flex-col md:flex-row items-center justify-center p-6 md:p-12 max-w-7xl mx-auto w-full gap-12">
+      <motion.main 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="flex-1 flex flex-col md:flex-row items-center justify-center p-6 md:p-12 max-w-7xl mx-auto w-full gap-12"
+      >
         
         {/* Hero Section */}
         <div className="flex-1 space-y-6 text-center md:text-left">
@@ -18,7 +24,7 @@ export default function SubscribePage() {
             <span className="text-primary">Gündemin Özü</span> E-Posta Kutunuzda!
           </h1>
           <p className="text-lg md:text-xl text-text-muted max-w-lg">
-            Politika, Finans, Bilim ve Mitoloji dünyasındaki en çarpıcı gelişmeleri, yapay zeka destekli akıllı bültenimizle doğrudan e-posta kutunda keşfet.
+            Finans, Mitoloji, Bilim ve Politika dünyasındaki en çarpıcı gelişmeler ve önemli bilgileri yapay zeka destekli akıllı bültenimizle doğrudan e-posta kutunda keşfet.
           </p>
           
           <ul className="space-y-4 pt-4 text-left inline-block md:block mx-auto">
@@ -32,7 +38,7 @@ export default function SubscribePage() {
               <span className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
               </span>
-              <span>Politika, Finans, Bilim ve Mitoloji için özel zamanlanmış bültenler.</span>
+              <span>Finans, Mitoloji, Bilim ve Politika için özel zamanlanmış bültenler.</span>
             </li>
             <li className="flex items-center text-text gap-3">
               <span className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center">
@@ -54,7 +60,7 @@ export default function SubscribePage() {
           <SubscribeForm />
         </div>
 
-      </main>
+      </motion.main>
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-text-muted/60">

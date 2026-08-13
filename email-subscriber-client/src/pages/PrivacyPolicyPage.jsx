@@ -1,11 +1,17 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
+import { motion } from 'framer-motion';
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex flex-col font-sans">
       <Navbar />
-      <main className="flex-1 max-w-4xl mx-auto w-full p-6 md:p-12">
+      <motion.main
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="flex-1 max-w-4xl mx-auto w-full p-6 md:p-12"
+      >
         <div className="p-4 md:p-8 prose max-w-none text-text-muted">
           <h1 className="text-3xl font-bold text-text mb-6 drop-shadow-sm">Aydınlatma Metni ve Gizlilik Politikası</h1>
           <p className="mb-4">
@@ -28,8 +34,8 @@ export default function PrivacyPolicyPage() {
             KVKK 11. Madde kapsamında; kişisel verilerinizin işlenip işlenmediğini öğrenme, düzeltilmesini veya silinmesini talep etme ve ileti almayı reddetme hakkına sahipsiniz. İstediğiniz zaman e-postaların altındaki "Abonelikten Ayrıl" bağlantısına tıklayarak listeden çıkabilirsiniz.
           </p>
         </div>
-      </main>
-      
+      </motion.main>
+
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-text-muted/60">
         <p>&copy; {new Date().getFullYear()} SUBMAIL. Tüm hakları saklıdır.</p>
