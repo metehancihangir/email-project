@@ -35,15 +35,22 @@ public class SubscriberService : ISubscriberService
 
         if (existingSubscriber != null)
         {
-            if (existingSubscriber.IsConfirmed)
+            if (existingSubscriber.IsActive && existingSubscriber.IsConfirmed)
             {
                 return (false, "Conflict"); // 409
             }
             
-            if (existingSubscriber.ConfirmationTokenExpiresAt > DateTime.UtcNow)
+            if (existingSubscriber.IsActive && !existingSubscriber.IsConfirmed)
             {
-                return (false, "Onay e-postası zaten gönderildi.");
+                if (existingSubscriber.ConfirmationTokenExpiresAt > DateTime.UtcNow)
+                {
+                    return (false, "Onay e-postası zaten gönderildi.");
+                }
             }
+            
+            // İnaktif kullanıcı tekrar abone olmak istiyorsa VEYA aktif ama token süresi dolmuşsa
+            existingSubscriber.IsActive = true;
+            existingSubscriber.IsConfirmed = false;
             
             existingSubscriber.ConfirmationToken = Guid.NewGuid().ToString("N");
             existingSubscriber.ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
@@ -161,6 +168,9 @@ public class SubscriberService : ISubscriberService
 
         subscriber.IsActive = false;
         subscriber.UnsubscribedAt = DateTime.UtcNow;
+        // Token'ı null yapıyoruz ki link tek kullanımlık olsun. Tekrar tıklandığında "Geçersiz Bağlantı" (404) versin.
+        subscriber.UnsubscribeToken = null;
+        
         _context.Subscribers.Update(subscriber);
         await _context.SaveChangesAsync();
 

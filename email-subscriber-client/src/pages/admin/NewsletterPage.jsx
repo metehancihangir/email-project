@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import api from '../../api/axiosInstance';
@@ -9,16 +9,56 @@ export default function NewsletterPage() {
   const [htmlBody, setHtmlBody] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [uploadedImages, setUploadedImages] = useState([]);
 
-  const modules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      ['link'],
-      ['clean']
-    ],
-  };
+  const quillRef = useRef(null);
+
+  const imageHandler = useCallback(() => {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await api.post('/api/admin/images/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          const url = res.data.url;
+          
+          const quill = quillRef.current.getEditor();
+          const range = quill.getSelection(true);
+          quill.insertEmbed(range.index, 'image', url);
+          // E-posta uyumluluğu için resme max-width ekle
+          quill.formatText(range.index, 1, 'width', '100%');
+
+          setUploadedImages(prev => [...prev, url]);
+        } catch (err) {
+          console.error(err);
+          setToast({ type: 'error', message: 'Resim yüklenirken hata oluştu.' });
+        }
+      }
+    };
+  }, []);
+
+  const modules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link', 'image'],
+        ['clean']
+      ],
+      handlers: {
+        image: imageHandler
+      }
+    }
+  }), [imageHandler]);
 
   const handleSend = async () => {
     if (!subject || !htmlBody) return;
@@ -31,12 +71,31 @@ export default function NewsletterPage() {
       setToast({ type: 'success', message: 'Bülten başarıyla kuyruğa alındı!' });
       setSubject('');
       setHtmlBody('');
+      setUploadedImages([]);
     } catch (err) {
       console.error(err);
       setToast({ type: 'error', message: 'Bülten gönderilirken bir hata oluştu.' });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditorChange = (content) => {
+    setHtmlBody(content);
+    
+    // Check for deleted images
+    uploadedImages.forEach(async (url) => {
+      if (!content.includes(url)) {
+        // Image was deleted from editor
+        try {
+          const fileName = url.split('/').pop();
+          await api.delete(`/api/admin/images/${fileName}`);
+          setUploadedImages(prev => prev.filter(imgUrl => imgUrl !== url));
+        } catch (error) {
+          console.error("Resim silinirken hata:", error);
+        }
+      }
+    });
   };
 
   return (
@@ -72,16 +131,43 @@ export default function NewsletterPage() {
             <label className="block text-sm font-medium text-text-muted mb-1">İçerik (HTML)</label>
             <div className="bg-white rounded-xl border border-gray-200">
                <ReactQuill 
+                  ref={quillRef}
                   theme="snow" 
                   value={htmlBody} 
-                  onChange={setHtmlBody} 
+                  onChange={handleEditorChange} 
                   modules={modules}
                   className="newsletter-editor"
                />
             </div>
           </div>
 
-          <div className="pt-12">
+          {uploadedImages.length > 0 && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <label className="block text-sm font-medium text-text-muted mb-3">Eklenen Görseller (Silmek için üzerine gelin)</label>
+              <div className="flex flex-wrap gap-4">
+                {uploadedImages.map((url) => (
+                  <div key={url} className="relative group w-20 h-20 rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+                    <img src={url} alt="Uploaded" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => {
+                        const fileName = url.split('/').pop();
+                        api.delete(`/api/admin/images/${fileName}`).catch(console.error);
+                        setUploadedImages(prev => prev.filter(imgUrl => imgUrl !== url));
+                        const newHtml = htmlBody.replace(new RegExp(`<img[^>]*src="${url}"[^>]*>`, 'g'), '');
+                        setHtmlBody(newHtml);
+                      }}
+                      className="absolute top-1 right-1 bg-black/50 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      title="Resmi Sunucudan ve Editörden Sil"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="pt-8">
             <button
               onClick={handleSend}
               disabled={loading || !subject || !htmlBody}

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SubscribePage from './pages/SubscribePage';
 import ConfirmPage from './pages/ConfirmPage';
 import UnsubscribePage from './pages/UnsubscribePage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/admin/AdminLayout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -18,6 +19,8 @@ export default function App() {
         <Route path="/" element={<SubscribePage />} />
         <Route path="/confirm" element={<ConfirmPage />} />
         <Route path="/unsubscribe" element={<UnsubscribePage />} />
+        <Route path="/gizlilik-politikasi" element={<PrivacyPolicyPage />} />
+        <Route path="/kullanim-kosullari" element={<PrivacyPolicyPage />} />
 
         {/* ─── Admin Routes ─── */}
         <Route path="/admin/login" element={<AdminLoginPage />} />

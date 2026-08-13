@@ -12,6 +12,9 @@
 
   /* ─── Tipografi ──────────────────────────────────────────────── */
   --font-sans: 'Inter', 'Outfit', system-ui, sans-serif;
+
+  /* ─── Background Patterns ────────────────────────────────────── */
+  --background-image-auth-pattern: url('/assets/bg-geometric.jpg');
 }
 
 /* ─── Global Stiller ─────────────────────────────────────────── */

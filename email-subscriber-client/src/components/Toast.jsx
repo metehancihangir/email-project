@@ -28,10 +28,10 @@ export default function Toast({ type, message, onClose }) {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className={`fixed top-5 left-1/2 -translate-x-1/2 px-4 py-3 rounded border shadow-md z-50 min-w-[300px] text-center ${currentBg}`}
+          className={`fixed top-5 left-1/2 -translate-x-1/2 pl-4 pr-12 py-3 rounded-xl border shadow-md z-50 min-w-[300px] text-center ${currentBg}`}
           role="alert"
         >
-          <span className="block sm:inline">{message}</span>
+          <span className="block sm:inline pr-2">{message}</span>
           <button
             onClick={onClose}
             className="absolute top-0 bottom-0 right-0 px-4 py-3 focus:outline-none"

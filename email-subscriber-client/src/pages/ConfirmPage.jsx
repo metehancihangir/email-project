@@ -132,7 +132,7 @@ export default function ConfirmPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-alt flex items-center justify-center p-4">
+    <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex items-center justify-center p-4">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       
       <AnimatePresence mode="wait">

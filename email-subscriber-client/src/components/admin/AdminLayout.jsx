@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosInstance';
+import Logo from '../Logo';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -28,13 +29,12 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex h-screen bg-surface-alt">
+    <div className="flex h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat">
       
       {/* Sidebar - Desktop */}
       <aside className={`fixed inset-y-0 left-0 bg-surface w-64 border-r border-gray-100 transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static z-20 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center px-6 border-b border-gray-100">
-          <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white mr-2">✉️</div>
-          <span className="text-xl font-bold text-text">AdminPanel</span>
+          <Logo variant="full" className="h-8" />
         </div>
         <nav className="p-4 space-y-1">
           {navItems.map((item) => (

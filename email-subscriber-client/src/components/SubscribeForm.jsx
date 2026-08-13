@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { isValidEmail } from '../utils/validation';
 import Toast from './Toast';
+import PrivacyModal from './PrivacyModal';
 
 export default function SubscribeForm() {
   const [name, setName] = useState('');
@@ -14,6 +15,8 @@ export default function SubscribeForm() {
   const [showResend, setShowResend] = useState(false);
   const [resendState, setResendState] = useState({ isDisabled: false, remainingSeconds: 0 });
   const [submittedEmail, setSubmittedEmail] = useState('');
+  const [gdprAccepted, setGdprAccepted] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   useEffect(() => {
     if (!resendState.isDisabled) return;
@@ -159,6 +162,29 @@ export default function SubscribeForm() {
           />
         </div>
 
+        <div className="mb-6 flex items-start">
+          <div className="flex items-center h-5 mt-1">
+            <input
+              id="gdpr"
+              type="checkbox"
+              required
+              checked={gdprAccepted}
+              onChange={(e) => setGdprAccepted(e.target.checked)}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+            />
+          </div>
+          <label htmlFor="gdpr" className="ml-2 text-xs font-medium text-text-muted">
+            <button 
+              type="button" 
+              onClick={() => setIsPrivacyModalOpen(true)} 
+              className="text-primary hover:underline focus:outline-none font-semibold"
+            >
+              Aydınlatma metnini
+            </button>{' '} 
+            okudum ve ticari elektronik ileti almayı kabul ediyorum.
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={loading || resendState.isDisabled}
@@ -194,6 +220,15 @@ export default function SubscribeForm() {
           </div>
         )}
       </form>
+
+      <PrivacyModal 
+        isOpen={isPrivacyModalOpen} 
+        onClose={() => setIsPrivacyModalOpen(false)} 
+        onAccept={() => {
+          setGdprAccepted(true);
+          setIsPrivacyModalOpen(false);
+        }} 
+      />
     </div>
   );
 }
