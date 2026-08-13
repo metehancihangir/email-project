@@ -14,9 +14,10 @@ export default function PreferencesPage() {
   const categoryInputRef = useRef(null);
 
   const categories = [
-    { id: "Mitoloji", label: "Mitoloji 🏛️" },
-    { id: "Bilim", label: "Bilim 🔬" },
-    { id: "Finans", label: "Finans 💰" }
+    { id: 'Mitoloji', label: 'Mitoloji 🏛️', description: 'Antik efsaneler, tanrılar ve efsanevi yaratıklar hakkında ilginç bilgiler.' },
+    { id: 'Bilim', label: 'Bilim 🔬', description: 'Uzay, teknoloji, doğa ve evrene dair en yeni bilimsel keşifler.' },
+    { id: 'Finans', label: 'Finans 💰', description: 'Piyasalar, yatırım dünyası ve ekonomideki son gelişmeler.' },
+    { id: 'Politika', label: 'Politika 🌍', description: 'İç ve dış siyasetteki gelişmeler, yasalar ve jeopolitik olaylar.' }
   ];
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

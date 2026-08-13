@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -11,12 +12,14 @@ public class GeminiService : IAIService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
+    private readonly string _fallbackApiKey;
     private readonly ILogger<GeminiService> _logger;
 
     public GeminiService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
         _apiKey = configuration["Gemini:ApiKey"] ?? "";
+        _fallbackApiKey = configuration["Gemini:FallbackApiKey"] ?? "";
         _logger = logger;
     }
 
@@ -140,6 +143,45 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
 </ul>";
                 break;
 
+            case "politika":
+                var politicsContext = await GetLatestPoliticsNewsAsync();
+                systemPrompt = $@"Sen uzman, tamamen tarafsız ve sade bir dille yazan bir Politika ve Dış İlişkiler Bülteni editörüsün. Görevin, iç ve dış siyasetteki gelişmeleri, yeni yasaları, diplomatik ilişkileri ve jeopolitik olayları okuyucuya spekülasyondan uzak, net ve anlaşılır bir şekilde sunmaktır.
+
+Aşağıda bugün dünyada ve Türkiye'de olan en güncel ve güvenilir haberler verilmiştir. BÜLTENİ KESİNLİKLE BU HABERLERİ BAZ ALARAK VE YORUMLAYARAK YAZ:
+
+{politicsContext}
+
+ÖZEL TALİMATLAR:
+1. Kesinlikle objektif kal. Siyasi kişi, kurum veya ideolojileri överken ya da yererken duygusal, yönlendirici veya sansasyonel kelimeler kullanma. Yalnızca resmi açıklamalara, onaylanmış olaylara ve eylemlerin sonuçlarına odaklan. Bürokratik jargonu basitleştir.
+2. Vurgulama Kuralları: Yalnızca <b>siyasi figürlerin/liderlerin adlarını</b>, <b>kurum/örgüt/parti isimlerini</b>, <b>yasa/antlaşma adlarını</b> ve <b>önemli tarihleri</b> HTML <b> etiketi ile kalın (bold) font ile yaz. KESİNLİKLE MARKDOWN (**) KULLANMA. Bütün bir cümleyi asla kalınlaştırma.
+3. Haberi bir ""kriz"" veya ""zafer"" diliyle değil; durum tespiti yapan, arka planı aydınlatan saygın bir haber ajansı tonunda kaleme al.
+4. Kaynakçaları (URL'leri) KESİNLİKLE `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap.
+
+Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> vb.) olarak ver, markdown (```html) KULLANMA:
+
+<h2>[Siyasi Gelişmenin Çarpıcı ve Tarafsız Başlığı]</h2>
+
+<p><b>Özet:</b> [Siyasi olayın, kararın veya diplomatik görüşmenin ne olduğunu özetleyen, yorum içermeyen en fazla iki cümle]</p>
+<hr />
+<h3>Gündemin Odak Noktası</h3>
+<p>[Siyasi gelişmenin, meclis kararı veya uluslararası olayın okuyucuyu yormayan, tarafsız ve sade anlatımı. Olayın arka planı ve ne anlama geldiği burada açıklanmalı.]</p>
+
+<h3>Öne Çıkan Detaylar</h3>
+<ul>
+<li><b>[Siyasi Figür / Kurum Adı]:</b> [Bu aktörün olaydaki rolü veya yaptığı kilit açıklama]</li>
+<li><b>[Yasa Tasarısı / Antlaşma / Kavram]:</b> [Alınan kararın veya tartışılan konunun getirdiği en büyük değişiklik]</li>
+</ul>
+
+<h3>Bunları Biliyor muydunuz?</h3>
+<p>[İşlenen siyasi konunun, antlaşmanın veya diplomatik krizin geçmişteki bir örneği veya bu politik kavramın kökenine dair kısa, ufuk açıcı bir bilgi]</p>
+<hr />
+<h3>Kaynakça</h3>
+<ul>
+<li><a href=""[Gerçek Kaynak Linki 1]"">[Açıklamanın yapıldığı resmi kurum, saygın haber ajansı veya rapor]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 2]"">[İkinci kaynak]</a></li>
+</ul>";
+                break;
+
             default:
                 systemPrompt = $@"Sen SUBMAIL için çalışan profesyonel bir içerik üreticisisin. 
 Kategori: {category}
@@ -163,88 +205,159 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
             }
         };
 
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={_apiKey}");
-        requestMessage.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        var jsonContent = JsonSerializer.Serialize(requestBody);
 
-        try
+        int maxRetries = 3;
+        string currentApiKey = _apiKey;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            var response = await _httpClient.SendAsync(requestMessage);
-            response.EnsureSuccessStatusCode();
+            try
+            {
+                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={currentApiKey}";
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl)
+                {
+                    Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
+                };
 
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var jsonDoc = JsonDocument.Parse(responseJson);
-            
-            // Gemini JSON format: { "candidates": [ { "content": { "parts": [ { "text": "..." } ] } } ] }
-            var content = jsonDoc.RootElement
-                .GetProperty("candidates")[0]
-                .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
-                .GetString();
+                var response = await _httpClient.SendAsync(requestMessage);
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && !string.IsNullOrEmpty(_fallbackApiKey) && currentApiKey != _fallbackApiKey)
+                {
+                    _logger.LogWarning("Gemini API kota aşımı (429 Too Many Requests). Fallback API anahtarına geçiliyor...");
+                    currentApiKey = _fallbackApiKey;
+                    attempt--; // Bu denemeyi sayma, yeni anahtarla tekrar dene
+                    continue;
+                }
 
-            return content?.Replace("```html", "").Replace("```", "").Trim() ?? "";
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var jsonDoc = JsonDocument.Parse(responseJson);
+                
+                var content = jsonDoc.RootElement
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts")[0]
+                    .GetProperty("text")
+                    .GetString();
+
+                return content?.Replace("```html", "").Replace("```", "").Trim() ?? "";
+            }
+            catch (Exception ex)
+            {
+                if (attempt == maxRetries)
+                {
+                    _logger.LogError(ex, "Gemini isteği başarısız oldu. Maksimum deneme sayısına ulaşıldı.");
+                    throw;
+                }
+                _logger.LogWarning(ex, $"Gemini isteği başarısız oldu (Deneme {attempt}/{maxRetries}). 3 saniye sonra tekrar deneniyor...");
+                await Task.Delay(3000);
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Gemini isteği başarısız oldu.");
-            throw;
-        }
+        
+        return string.Empty;
     }
 
-    public async Task<string?> GetImageUrlForTopicAsync(string category, string topic)
+    public async Task<string?> GetImageUrlForTopicAsync(string category, string topic, string htmlContent = "")
     {
-        // Gerçek ve konuyla alakalı bir fotoğraf (AI üretimi DEĞİL) bulmak için, 
-        // Gemini'dan konuyu İngilizce 2 kelimelik stok fotoğraf arama etiketine (keyword) çevirmesini istiyoruz.
+        // 1. Önce htmlContent içindeki linkleri (href) bulup og:image çekmeyi deneyelim.
+        if (!string.IsNullOrEmpty(htmlContent))
+        {
+            var hrefMatches = Regex.Matches(htmlContent, @"href=""(http[s]?://[^""]+)""");
+            foreach (Match match in hrefMatches.Take(3)) // İlk 3 linke bakalım (hız için)
+            {
+                var link = match.Groups[1].Value;
+                try
+                {
+                    // Kısa bir timeout ile linke istek atalım
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    var html = await _httpClient.GetStringAsync(link, cts.Token);
+                    
+                    var ogImageMatch = Regex.Match(html, @"<meta\s+(?:[^>]*?content=""([^""]+)""[^>]*?(?:property|name)=""og:image""|[^>]*?(?:property|name)=""og:image""[^>]*?content=""([^""]+)"")[^>]*?>", RegexOptions.IgnoreCase);
+                    if (ogImageMatch.Success)
+                    {
+                        var imageUrl = !string.IsNullOrEmpty(ogImageMatch.Groups[1].Value) ? ogImageMatch.Groups[1].Value : ogImageMatch.Groups[2].Value;
+                        _logger.LogInformation("og:image bulundu: {ImageUrl}", imageUrl);
+                        return imageUrl;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Linkten og:image alınamadı: {Link}", link);
+                }
+            }
+        }
+
+        // 2. Eğer og:image bulunamazsa, AI ile İngilizce keyword üret ve Unsplash Random endpoint'ini kullan.
         var requestBody = new
         {
             contents = new[]
             {
-                new { parts = new[] { new { text = $"'{topic}' konulu bir e-posta bülteni için telifsiz stok fotoğraf arayacağım. Lütfen bana arama yapabileceğim en uygun ve kısa 2 İngilizce kelimeyi virgülle ayırarak ver. Sadece kelimeleri ver, başka hiçbir kelime veya noktalama işareti yazma." } } }
+                new { parts = new[] { new { text = $"Bu metni ('{topic}' konusu ve '{category}' kategorisi) okuyup, arka planda görsel aramak için kullanılacak en fazla 3 kelimelik, somut bir İngilizce arama terimi üret. Sadece terimi yaz, aralarına virgül koy. (Örn: stock market red, space star galaxy)" } } }
             }
         };
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={_apiKey}");
-        requestMessage.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
         string keywords = category.ToLower() switch
         {
             "mitoloji" => "mythology,ancient",
             "bilim" => "science,space",
             "finans" => "finance,money",
+            "politika" => "politics,government",
             _ => "abstract"
         };
 
-        try
-        {
-            var response = await _httpClient.SendAsync(requestMessage);
-            if (response.IsSuccessStatusCode)
-            {
-                var json = await response.Content.ReadAsStringAsync();
-                var doc = JsonDocument.Parse(json);
-                var aiKeywords = doc.RootElement
-                    .GetProperty("candidates")[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
-                    .GetString()?.Trim();
+        int maxRetries = 3;
+        string currentApiKey = _apiKey;
 
-                if (!string.IsNullOrEmpty(aiKeywords))
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={currentApiKey}";
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+                requestMessage.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(requestMessage);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && !string.IsNullOrEmpty(_fallbackApiKey) && currentApiKey != _fallbackApiKey)
                 {
-                    keywords = aiKeywords.Replace(" ", "").Replace("\n", "").ToLower();
+                    _logger.LogWarning("Gemini API kota aşımı (429 Too Many Requests) keyword araması için. Fallback API anahtarına geçiliyor...");
+                    currentApiKey = _fallbackApiKey;
+                    attempt--;
+                    continue;
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseJson = await response.Content.ReadAsStringAsync();
+                    var jsonDoc = JsonDocument.Parse(responseJson);
+                    
+                    var aiKeywords = jsonDoc.RootElement
+                        .GetProperty("candidates")[0]
+                        .GetProperty("content")
+                        .GetProperty("parts")[0]
+                        .GetProperty("text")
+                        .GetString()?.Trim();
+
+                    if (!string.IsNullOrEmpty(aiKeywords))
+                    {
+                        keywords = aiKeywords.Replace(" ", "").Replace("\n", "").ToLower();
+                    }
+                    break;
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            // Hata olursa varsayılan (fallback) kelimeler kullanılır
-            _logger.LogError(ex, "Görsel keyword'leri alınırken hata oluştu.");
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, $"Görsel keyword'leri alınırken hata oluştu. (Deneme {attempt}/{maxRetries})");
+                if (attempt < maxRetries) await Task.Delay(2000);
+            }
         }
         
-        // Gerçek fotoğraflar için LoremFlickr kullanıyoruz. 
-        // Yapay zekanın bulduğu İngilizce kelimeleri (keywords) kullanarak rastgele ama tam konuyla eşleşen bir fotoğraf getiriyoruz.
-        var url = $"https://loremflickr.com/800/400/{keywords}?lock={Random.Shared.Next(1, 10000)}";
-        
-        return url;
+        _logger.LogInformation("Görsel için kullanılacak kelimeler: {Keywords}", keywords);
+        // images.unsplash.com/random endpointi yönlendirme (redirect) yaptığı için Gmail gibi bazı e-posta istemcilerinde resmi kırık gösterebilir.
+        // Bu yüzden stabil olan ve rastgele stok fotoğraf döndüren alternatif bir servisi kullanıyoruz.
+        return $"https://loremflickr.com/800/400/{keywords.Replace(",", ",")}/all";
     }
 
     private async Task<string> GetLatestFinanceNewsAsync()
@@ -273,6 +386,50 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "RSS feed çekilemedi, varsayılan finans istemiyle devam edilecek.");
+            return string.Empty;
+        }
+    }
+
+    private async Task<string> GetLatestPoliticsNewsAsync()
+    {
+        try
+        {
+            var rssUrls = new[] 
+            { 
+                "https://feeds.bbci.co.uk/turkce/rss.xml", 
+                "https://feeds.bbci.co.uk/turkce/dunya/rss.xml" 
+            };
+            
+            var feedText = new System.Text.StringBuilder();
+            feedText.AppendLine("GÜNCEL POLİTİKA VE DÜNYA HABERLERİ:");
+
+            foreach (var rssUrl in rssUrls)
+            {
+                var response = await _httpClient.GetStringAsync(rssUrl);
+                var doc = XDocument.Parse(response);
+
+                var items = doc.Descendants("item").Take(4);
+                foreach (var item in items)
+                {
+                    var title = item.Element("title")?.Value;
+                    var description = item.Element("description")?.Value;
+                    var link = item.Element("link")?.Value;
+
+                    if (!string.IsNullOrEmpty(title))
+                    {
+                        feedText.AppendLine($"- Başlık: {title}");
+                        feedText.AppendLine($"  Özet: {description}");
+                        feedText.AppendLine($"  Link: {link}");
+                        feedText.AppendLine();
+                    }
+                }
+            }
+
+            return feedText.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Politika RSS feed çekilemedi, varsayılan politika istemiyle devam edilecek.");
             return string.Empty;
         }
     }

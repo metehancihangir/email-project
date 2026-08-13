@@ -42,6 +42,7 @@ export default function HelpPage() {
                   <li><strong>Finans:</strong> Cumartesi Sabah 10:00</li>
                   <li><strong>Bilim:</strong> Cumartesi Akşam 20:00</li>
                   <li><strong>Mitoloji:</strong> Pazar Sabah 10:00</li>
+                  <li><strong>Politika:</strong> Cuma Akşam 20:00</li>
                 </ul>
               </div>
             </div>
