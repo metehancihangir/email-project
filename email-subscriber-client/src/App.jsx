@@ -5,6 +5,8 @@ import UnsubscribePage from './pages/UnsubscribePage';
 import PreferencesPage from './pages/PreferencesPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import HelpPage from './pages/HelpPage';
+import ContactPage from './pages/ContactPage';
+import AboutPage from './pages/AboutPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/admin/AdminLayout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -25,7 +27,9 @@ export default function App() {
         <Route path="/preferences" element={<PreferencesPage />} />
         <Route path="/gizlilik-politikasi" element={<PrivacyPolicyPage />} />
         <Route path="/kullanim-kosullari" element={<PrivacyPolicyPage />} />
+        <Route path="/hakkimizda" element={<AboutPage />} />
         <Route path="/yardim" element={<HelpPage />} />
+        <Route path="/iletisim" element={<ContactPage />} />
 
         {/* ─── Admin Routes ─── */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
