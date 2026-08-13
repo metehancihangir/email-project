@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,16 +11,16 @@ namespace EmailSubscriber.API.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "LastCodeRequestedAt",
-                table: "Subscribers",
-                type: "datetime(6)",
-                nullable: true);
+            // migrationBuilder.AddColumn<DateTime>(
+            //     name: "LastCodeRequestedAt",
+            //     table: "Subscribers",
+            //     type: "datetime(6)",
+            //     nullable: true);
 
-            migrationBuilder.CreateIndex(
-                name: "idx_subscribers_email_lastrequested",
-                table: "Subscribers",
-                columns: new[] { "Email", "LastCodeRequestedAt" });
+            // migrationBuilder.CreateIndex(
+            //     name: "idx_subscribers_email_lastrequested",
+            //     table: "Subscribers",
+            //     columns: new[] { "Email", "LastCodeRequestedAt" });
         }
 
         /// <inheritdoc />

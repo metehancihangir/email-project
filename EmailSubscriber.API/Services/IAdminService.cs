@@ -13,6 +13,8 @@ public interface IAdminService
     
     // Newsletter & Campaigns
     Task<(int campaignId, int recipientCount)> SendNewsletterAsync(string subject, string htmlBody);
+    Task<(int campaignId, int recipientCount)> SendTargetedNewsletterAsync(string subject, string htmlBody, List<int> subscriberIds);
     Task<IEnumerable<EmailSubscriber.API.DTOs.CampaignDto>> GetCampaignsAsync();
     Task<EmailSubscriber.API.DTOs.CampaignStatsDto?> GetCampaignStatsAsync(int id);
+    Task<string?> GetCampaignContentAsync(int id);
 }

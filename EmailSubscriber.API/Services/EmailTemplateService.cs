@@ -22,13 +22,14 @@ public class EmailTemplateService : IEmailTemplateService
             .Replace("{{ConfirmUrl}}", confirmUrl);
     }
 
-    public async Task<string> GetWelcomeEmailHtmlAsync(string name, string unsubscribeUrl)
+    public async Task<string> GetWelcomeEmailHtmlAsync(string name, string unsubscribeUrl, string preferencesUrl)
     {
         var filePath = Path.Combine(_env.ContentRootPath, "Templates", "WelcomeEmailTemplate.html");
         var html = await File.ReadAllTextAsync(filePath);
         
         return html
             .Replace("{{Name}}", string.IsNullOrEmpty(name) ? "" : " " + name)
-            .Replace("{{UnsubscribeUrl}}", unsubscribeUrl);
+            .Replace("{{UnsubscribeUrl}}", unsubscribeUrl)
+            .Replace("{{PreferencesUrl}}", preferencesUrl);
     }
 }

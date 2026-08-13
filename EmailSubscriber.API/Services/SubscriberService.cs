@@ -29,7 +29,7 @@ public class SubscriberService : ISubscriberService
         _frontendUrl = configuration["App:BaseUrl"] ?? "http://localhost:5173";
     }
 
-    public async Task<(bool IsSuccess, string Message)> SubscribeAsync(string email, string? name)
+    public async Task<(bool IsSuccess, string Message)> SubscribeAsync(string email, string? name, string? interests = null)
     {
         var existingSubscriber = await _context.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
 
@@ -58,6 +58,7 @@ public class SubscriberService : ISubscriberService
             {
                 existingSubscriber.UnsubscribeToken = Guid.NewGuid().ToString("N");
             }
+            existingSubscriber.Interests = interests;
             _context.Subscribers.Update(existingSubscriber);
         }
         else
@@ -71,7 +72,8 @@ public class SubscriberService : ISubscriberService
                 SubscribedAt = DateTime.UtcNow,
                 ConfirmationToken = Guid.NewGuid().ToString("N"),
                 ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24),
-                UnsubscribeToken = Guid.NewGuid().ToString("N")
+                UnsubscribeToken = Guid.NewGuid().ToString("N"),
+                Interests = interests
             };
             
             _context.Subscribers.Add(newSubscriber);
@@ -121,8 +123,9 @@ public class SubscriberService : ISubscriberService
 
         // Hoş geldin e-postası gönder
         string unsubUrl = $"{_frontendUrl}/unsubscribe?token={subscriber.UnsubscribeToken}";
+        string preferencesUrl = $"{_frontendUrl}/preferences?token={subscriber.UnsubscribeToken}";
         
-        string htmlBody = await _templateService.GetWelcomeEmailHtmlAsync(subscriber.Name ?? "", unsubUrl);
+        string htmlBody = await _templateService.GetWelcomeEmailHtmlAsync(subscriber.Name ?? "", unsubUrl, preferencesUrl);
         var job = new EmailSubscriber.API.Queue.EmailJob(
             To: subscriber.Email,
             ToName: subscriber.Name,
@@ -175,6 +178,28 @@ public class SubscriberService : ISubscriberService
         await _context.SaveChangesAsync();
 
         return (200, "Abonelik iptal edildi.");
+    }
+
+    public async Task<(int StatusCode, string Message, string? Interests)> GetPreferencesAsync(string token)
+    {
+        var subscriber = await _context.Subscribers.FirstOrDefaultAsync(s => s.UnsubscribeToken == token);
+        if (subscriber == null || !subscriber.IsActive)
+            return (404, "Kayıt bulunamadı.", null);
+
+        return (200, "Başarılı.", subscriber.Interests);
+    }
+
+    public async Task<(int StatusCode, string Message)> UpdatePreferencesAsync(string token, string? interests)
+    {
+        var subscriber = await _context.Subscribers.FirstOrDefaultAsync(s => s.UnsubscribeToken == token);
+        if (subscriber == null || !subscriber.IsActive)
+            return (404, "Kayıt bulunamadı.");
+
+        subscriber.Interests = interests;
+        _context.Subscribers.Update(subscriber);
+        await _context.SaveChangesAsync();
+
+        return (200, "Tercihleriniz güncellendi.");
     }
 
     // ─── Faz 2: Rate-Limited Resend (Seçenek B — DB tabanlı) ────────────────

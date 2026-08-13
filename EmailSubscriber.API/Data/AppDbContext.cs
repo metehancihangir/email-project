@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Campaign> Campaigns { get; set; }
     public DbSet<CampaignRecipient> CampaignRecipients { get; set; }
     public DbSet<TrackedLink> TrackedLinks { get; set; }
+    public DbSet<PastAITopic> PastAITopics { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -58,6 +59,14 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(cr => cr.SubscriberId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PastAITopic>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Category).IsRequired().HasMaxLength(50);
+            entity.Property(p => p.TopicName).IsRequired().HasMaxLength(255);
+            entity.HasIndex(p => p.Category);
         });
     }
 }

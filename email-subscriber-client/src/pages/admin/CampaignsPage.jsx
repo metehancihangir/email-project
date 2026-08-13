@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [campaignContent, setCampaignContent] = useState('');
+  const [contentLoading, setContentLoading] = useState(false);
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -19,6 +22,21 @@ export default function CampaignsPage() {
     };
     fetchCampaigns();
   }, []);
+
+  const handleViewContent = async (campaign) => {
+    setSelectedCampaign(campaign);
+    setContentLoading(true);
+    setCampaignContent('');
+    try {
+      const res = await api.get(`/api/admin/campaigns/${campaign.id}/content`);
+      setCampaignContent(res.data.htmlBody || 'İçerik bulunamadı.');
+    } catch (err) {
+      console.error(err);
+      setCampaignContent('İçerik yüklenirken bir hata oluştu.');
+    } finally {
+      setContentLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -59,7 +77,14 @@ export default function CampaignsPage() {
                       transition={{ delay: index * 0.05 }}
                       className="border-b border-gray-50 hover:bg-gray-50/50"
                     >
-                      <td className="p-4 font-medium text-text">{camp.subject}</td>
+                      <td className="p-4">
+                        <button 
+                          onClick={() => handleViewContent(camp)}
+                          className="font-medium text-primary hover:underline text-left"
+                        >
+                          {camp.subject}
+                        </button>
+                      </td>
                       <td className="p-4 text-gray-500 text-sm">
                         {new Date(camp.sentAt).toLocaleString('tr-TR')}
                       </td>
@@ -98,6 +123,52 @@ export default function CampaignsPage() {
           </table>
         </div>
       </div>
+
+      {/* İçerik Modalı */}
+      <AnimatePresence>
+        {selectedCampaign && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setSelectedCampaign(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h2 className="font-semibold text-lg">{selectedCampaign.subject}</h2>
+                <button 
+                  onClick={() => setSelectedCampaign(null)}
+                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 bg-gray-100 flex justify-center">
+                {contentLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div 
+                    className="bg-white shadow-sm" 
+                    style={{ minWidth: '600px', maxWidth: '600px', minHeight: '400px' }}
+                    dangerouslySetInnerHTML={{ __html: campaignContent }} 
+                  />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

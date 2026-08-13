@@ -19,4 +19,6 @@ public class Subscriber
     /// 2 dakikalık cooldown kontrolü için kullanılır.
     /// </summary>
     public DateTime? LastCodeRequestedAt { get; set; }
+    
+    public string? Interests { get; set; } // Örn: "Mitoloji,Bilim"
 }
