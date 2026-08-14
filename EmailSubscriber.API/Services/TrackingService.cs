@@ -1,4 +1,5 @@
 using EmailSubscriber.API.Data;
+using EmailSubscriber.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
@@ -81,5 +82,36 @@ public class TrackingService : ITrackingService
         }
 
         return (true, trackedLink.OriginalUrl);
+    }
+
+    public async Task<bool> TrackFeedbackAsync(int campaignId, int subscriberId, bool isPositive, string? signature)
+    {
+        if (!ValidateOpenSignature(campaignId, subscriberId, signature))
+        {
+            return false;
+        }
+
+        var existingFeedback = await _context.CampaignFeedbacks
+            .FirstOrDefaultAsync(f => f.CampaignId == campaignId && f.SubscriberId == subscriberId);
+
+        if (existingFeedback != null)
+        {
+            existingFeedback.IsPositive = isPositive;
+            existingFeedback.CreatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            var feedback = new CampaignFeedback
+            {
+                CampaignId = campaignId,
+                SubscriberId = subscriberId,
+                IsPositive = isPositive,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.CampaignFeedbacks.Add(feedback);
+        }
+
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

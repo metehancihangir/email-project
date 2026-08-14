@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<CampaignRecipient> CampaignRecipients { get; set; }
     public DbSet<TrackedLink> TrackedLinks { get; set; }
     public DbSet<PastAITopic> PastAITopics { get; set; }
+    public DbSet<CampaignFeedback> CampaignFeedbacks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,8 @@ public class AppDbContext : DbContext
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Subject).IsRequired().HasMaxLength(255);
             entity.Property(c => c.HtmlBody).IsRequired(); // LONGTEXT will be mapped implicitly or explicitly based on provider
+            entity.Property(c => c.Category).HasMaxLength(50);
+            entity.Property(c => c.CoverImageUrl).HasMaxLength(2048);
         });
 
         modelBuilder.Entity<CampaignRecipient>(entity =>
@@ -67,6 +70,23 @@ public class AppDbContext : DbContext
             entity.Property(p => p.Category).IsRequired().HasMaxLength(50);
             entity.Property(p => p.TopicName).IsRequired().HasMaxLength(255);
             entity.HasIndex(p => p.Category);
+        });
+
+        modelBuilder.Entity<CampaignFeedback>(entity =>
+        {
+            entity.HasKey(f => f.Id);
+
+            entity.HasOne(f => f.Campaign)
+                  .WithMany(c => c.Feedbacks)
+                  .HasForeignKey(f => f.CampaignId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(f => f.Subscriber)
+                  .WithMany()
+                  .HasForeignKey(f => f.SubscriberId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(f => new { f.CampaignId, f.SubscriberId }).IsUnique();
         });
     }
 }

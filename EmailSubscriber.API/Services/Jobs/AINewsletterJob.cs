@@ -168,17 +168,7 @@ public class AINewsletterJob : BackgroundService
 
             _logger.LogInformation("{Count} aboneye gönderiliyor.", targetSubscribers.Count);
 
-            string finalHtml = $@"
-            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;'>
-                <div style='text-align: center; margin-bottom: 20px;'>
-                    <img src='{imageUrl}' alt='{category}' style='max-width: 100%; border-radius: 8px;' />
-                </div>
-                {htmlContent}
-                <hr style='border: 0; border-top: 1px solid #eee; margin: 30px 0;' />
-                <p style='font-size: 12px; color: #999; text-align: center;'>Bu bülten SUBMAIL AI tarafından otomatik oluşturulmuştur.</p>
-            </div>";
-
-            await adminService.SendTargetedNewsletterAsync(subject, finalHtml, targetSubscribers.Select(s => s.Id).ToList());
+            await adminService.SendTargetedNewsletterAsync(subject, htmlContent, targetSubscribers.Select(s => s.Id).ToList(), category, imageUrl);
 
             // Konuyu veritabanına kaydet
             context.PastAITopics.Add(new PastAITopic

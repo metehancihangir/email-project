@@ -1,8 +1,11 @@
+using EmailSubscriber.API.Data;
 using EmailSubscriber.API.DTOs;
 using EmailSubscriber.API.Services;
+using EmailSubscriber.API.Services.AI;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 namespace EmailSubscriber.API.Controllers;
 
@@ -80,9 +83,77 @@ public class AdminController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var (campaignId, recipientCount) = await _adminService.SendNewsletterAsync(request.Subject, request.HtmlBody);
+        int campaignId;
+        int recipientCount;
+
+        if (request.TargetSubscriberIds != null && request.TargetSubscriberIds.Any())
+        {
+            (campaignId, recipientCount) = await _adminService.SendTargetedNewsletterAsync(
+                request.Subject, 
+                request.HtmlBody, 
+                request.TargetSubscriberIds, 
+                request.Category, 
+                request.CoverImageUrl);
+        }
+        else
+        {
+            (campaignId, recipientCount) = await _adminService.SendNewsletterAsync(
+                request.Subject, 
+                request.HtmlBody, 
+                request.Category, 
+                request.CoverImageUrl);
+        }
 
         return Accepted(new { campaignId, recipientCount });
+    }
+
+    [Authorize]
+    [HttpPost("send-test")]
+    public async Task<IActionResult> SendTestEmail([FromBody] SendTestEmailRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var success = await _adminService.SendTestEmailAsync(
+            request.TargetEmail, 
+            request.Subject, 
+            request.HtmlBody, 
+            request.Category, 
+            request.CoverImageUrl);
+
+        if (!success)
+            return StatusCode(500, new { message = "Test e-postası gönderilemedi." });
+
+        return Ok(new { message = $"Test e-postası başarıyla kuyruğa alındı: {request.TargetEmail}" });
+    }
+
+    [Authorize]
+    [HttpPost("generate-draft")]
+    public async Task<IActionResult> GenerateDraft([FromQuery] string? category, [FromServices] IAIService aiService, [FromServices] AppDbContext context)
+    {
+        var selectedCategory = category ?? "Mitoloji";
+
+        try
+        {
+            var pastTopicsList = await context.PastAITopics
+                .Where(p => p.Category == selectedCategory)
+                .OrderByDescending(p => p.GeneratedAt)
+                .Take(10)
+                .Select(p => p.TopicName)
+                .ToListAsync();
+
+            string pastTopicsStr = pastTopicsList.Any() ? string.Join(", ", pastTopicsList) : "Yok";
+
+            var draft = await aiService.GenerateNewsletterDraftAsync(selectedCategory, pastTopicsStr);
+            return Ok(draft);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                message = "Yapay zeka taslak üretimi başarısız oldu. Lütfen API anahtarınızı ve Gemini model erişiminizi kontrol edip tekrar deneyin."
+            });
+        }
     }
 
     [Authorize]
@@ -126,8 +197,7 @@ public class AdminController : ControllerBase
         if (file.Length > 5 * 1024 * 1024)
             return BadRequest(new { message = "Dosya boyutu 5MB'dan küçük olmalıdır." });
 
-        // Resim Yükleme Zafiyeti (Magic Number Bypass Koruması):
-        // Sadece uzantıya güvenmek yerine dosyanın ilk byte'larını (header) okuyup gerçekten resim formatında olup olmadığını teyit ediyoruz.
+        // Resim Yükleme Zafiyeti (Magic Number Bypass Koruması)
         using (var stream = file.OpenReadStream())
         {
             var buffer = new byte[12];
@@ -137,7 +207,7 @@ public class AdminController : ControllerBase
             bool isPng = buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E && buffer[3] == 0x47;
             bool isGif = buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46;
             bool isWebp = buffer[0] == 0x52 && buffer[1] == 0x49 && buffer[2] == 0x46 && buffer[3] == 0x46 && 
-                          buffer[8] == 0x57 && buffer[9] == 0x45 && buffer[10] == 0x42 && buffer[11] == 0x50; // WEBP header
+                          buffer[8] == 0x57 && buffer[9] == 0x45 && buffer[10] == 0x42 && buffer[11] == 0x50;
 
             if (!isJpg && !isPng && !isGif && !isWebp)
             {

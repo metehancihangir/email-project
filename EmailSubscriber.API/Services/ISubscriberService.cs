@@ -20,5 +20,8 @@ public interface ISubscriberService
     
     Task<(int StatusCode, string Message, string? Interests)> GetPreferencesAsync(string token);
     Task<(int StatusCode, string Message)> UpdatePreferencesAsync(string token, string? interests);
-}
 
+    // Ziyaretçiler için Bülten Arşivi
+    Task<PagedResult<PublicNewsletterDto>> GetPublicArchiveAsync(string? category, string? search, int page = 1, int pageSize = 12);
+    Task<PublicNewsletterDto?> GetPublicNewsletterByIdAsync(int id);
+}

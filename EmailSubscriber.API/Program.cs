@@ -151,7 +151,8 @@ try
     builder.Services.AddHostedService<EmailSubscriber.API.Services.Jobs.AINewsletterJob>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IEmailService, EmailSubscriber.API.Services.MailKitEmailService>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IEmailTemplateService, EmailSubscriber.API.Services.EmailTemplateService>();
-    builder.Services.AddHttpClient<EmailSubscriber.API.Services.AI.IAIService, EmailSubscriber.API.Services.AI.GeminiService>();
+    builder.Services.AddHttpClient<EmailSubscriber.API.Services.AI.IAIService, EmailSubscriber.API.Services.AI.GeminiService>()
+        .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(90));
 
     builder.Services.AddScoped<EmailSubscriber.API.Services.ISubscriberService, EmailSubscriber.API.Services.SubscriberService>();
     builder.Services.AddScoped<EmailSubscriber.API.Services.IAdminService, EmailSubscriber.API.Services.AdminService>();
@@ -229,6 +230,44 @@ try
 
     // ─── Health Check ─────────────────────────────────────────────────────────
     app.MapGet("/health", () => Results.Ok(new { status = "OK", timestamp = DateTime.UtcNow }));
+
+    // ─── Test Verisi Temizliği (Geliştirme Ortamı) ───────────────────────────
+    if (app.Environment.IsDevelopment())
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var testCampaigns = await db.Campaigns
+                .Where(c => c.Subject.StartsWith("Test") || c.Subject.StartsWith("[TEST]") || c.Subject.StartsWith("Geri Bildirim Testi"))
+                .ToListAsync();
+
+            if (testCampaigns.Any())
+            {
+                var testCampaignIds = testCampaigns.Select(c => c.Id).ToList();
+                var links = await db.TrackedLinks.Where(l => testCampaignIds.Contains(l.CampaignId)).ToListAsync();
+                var recipients = await db.CampaignRecipients.Where(r => testCampaignIds.Contains(r.CampaignId)).ToListAsync();
+                var feedbacks = await db.CampaignFeedbacks.Where(f => testCampaignIds.Contains(f.CampaignId)).ToListAsync();
+
+                db.TrackedLinks.RemoveRange(links);
+                db.CampaignRecipients.RemoveRange(recipients);
+                db.CampaignFeedbacks.RemoveRange(feedbacks);
+                db.Campaigns.RemoveRange(testCampaigns);
+            }
+
+            var testSubs = await db.Subscribers.Where(s => s.Email.EndsWith("@test.com")).ToListAsync();
+            if (testSubs.Any())
+            {
+                db.Subscribers.RemoveRange(testSubs);
+            }
+
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Test verisi temizliği sırasında uyarı oluştu.");
+        }
+    }
 
     app.Run();
 }

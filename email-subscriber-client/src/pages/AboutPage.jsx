@@ -1,11 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import NewsletterPreviewModal from '../components/NewsletterPreviewModal';
 
 export default function AboutPage() {
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   return (
     <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex flex-col font-sans">
       <Navbar />
@@ -63,23 +61,19 @@ export default function AboutPage() {
             <p className="mt-8 font-semibold">
               Amacımız vaktinizi çalmak değil, vaktinize değer katmaktır. Aramıza katıldığınız için teşekkür ederiz!
             </p>
+
             <div className="mt-10 text-center">
-              <button
-                onClick={() => setIsPreviewOpen(true)}
-                className="inline-flex items-center gap-2 text-primary font-medium hover:text-primary-dark transition-colors px-6 py-3 bg-primary/10 rounded-lg hover:bg-primary/20 shadow-sm"
+              <Link
+                to="/arsiv"
+                className="inline-flex items-center gap-2 text-primary font-bold hover:text-primary-hover transition-colors px-7 py-3.5 bg-primary/10 rounded-2xl hover:bg-primary/20 shadow-xs"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                Örnek Bülteni İncele
-              </button>
+                <span>Bülten Arşivine Göz At</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+              </Link>
             </div>
           </div>
         </div>
       </motion.main>
-
-      <NewsletterPreviewModal 
-        isOpen={isPreviewOpen} 
-        onClose={() => setIsPreviewOpen(false)} 
-      />
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-text-muted/60">

@@ -211,5 +211,22 @@ public class SubscribersController : ControllerBase
 
         return StatusCode(statusCode, new { message });
     }
+
+    [HttpGet("archive")]
+    public async Task<IActionResult> GetArchive([FromQuery] string? category, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 12)
+    {
+        var result = await _subscriberService.GetPublicArchiveAsync(category, search, page, pageSize);
+        return Ok(result);
+    }
+
+    [HttpGet("archive/{id}")]
+    public async Task<IActionResult> GetArchiveDetail(int id)
+    {
+        var result = await _subscriberService.GetPublicNewsletterByIdAsync(id);
+        if (result == null)
+            return NotFound(new { message = "Bülten bulunamadı." });
+
+        return Ok(result);
+    }
 }
 
