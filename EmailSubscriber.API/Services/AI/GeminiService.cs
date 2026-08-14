@@ -207,14 +207,14 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
 
         var jsonContent = JsonSerializer.Serialize(requestBody);
 
-        int maxRetries = 3;
+        int maxRetries = 7;
         string currentApiKey = _apiKey;
 
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={currentApiKey}";
+                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={currentApiKey}";
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl)
                 {
                     Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
@@ -251,8 +251,8 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
                     _logger.LogError(ex, "Gemini isteği başarısız oldu. Maksimum deneme sayısına ulaşıldı.");
                     throw;
                 }
-                _logger.LogWarning(ex, $"Gemini isteği başarısız oldu (Deneme {attempt}/{maxRetries}). 3 saniye sonra tekrar deneniyor...");
-                await Task.Delay(3000);
+                _logger.LogWarning(ex, $"Gemini isteği başarısız oldu (Deneme {attempt}/{maxRetries}). 10 saniye sonra tekrar deneniyor...");
+                await Task.Delay(10000);
             }
         }
         
@@ -307,14 +307,14 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
             _ => "abstract"
         };
 
-        int maxRetries = 3;
+        int maxRetries = 5;
         string currentApiKey = _apiKey;
 
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={currentApiKey}";
+                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={currentApiKey}";
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl);
                 requestMessage.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
@@ -350,7 +350,7 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, $"Görsel keyword'leri alınırken hata oluştu. (Deneme {attempt}/{maxRetries})");
-                if (attempt < maxRetries) await Task.Delay(2000);
+                if (attempt < maxRetries) await Task.Delay(5000);
             }
         }
         
