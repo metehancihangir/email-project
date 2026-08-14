@@ -10,4 +10,8 @@ public class NewsletterSendRequest
 
     [Required(ErrorMessage = "E-posta içeriği (HtmlBody) zorunludur.")]
     public required string HtmlBody { get; set; }
+
+    public string? Category { get; set; }
+    public string? CoverImageUrl { get; set; }
+    public List<int>? TargetSubscriberIds { get; set; }
 }

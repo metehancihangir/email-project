@@ -300,4 +300,98 @@ public class SubscriberService : ISubscriberService
 
         return (false, null); // Cooldown süresi dolmuş
     }
+
+    public async Task<PagedResult<PublicNewsletterDto>> GetPublicArchiveAsync(string? category, string? search, int page = 1, int pageSize = 12)
+    {
+        var query = _context.Campaigns
+            .Include(c => c.Feedbacks)
+            .AsNoTracking()
+            .AsQueryable();
+
+        // Test amaçlı oluşturulmuş bültenleri kamuya açık arşivden gizle
+        query = query.Where(c => !c.Subject.StartsWith("Test") && 
+                                 !c.Subject.StartsWith("[TEST]") && 
+                                 !c.Subject.StartsWith("Geri Bildirim Testi"));
+
+        if (!string.IsNullOrWhiteSpace(category) && !category.Equals("hepsi", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(c => c.Category == category || (c.Category == null && c.Subject.Contains(category)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(c => c.Subject.Contains(search) || c.HtmlBody.Contains(search));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var rawList = await query
+            .OrderByDescending(c => c.SentAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(c => new
+            {
+                c.Id,
+                c.Subject,
+                c.HtmlBody,
+                c.Category,
+                c.CoverImageUrl,
+                c.SentAt,
+                Likes = c.Feedbacks.Count(f => f.IsPositive)
+            })
+            .ToListAsync();
+
+        var items = rawList.Select(c =>
+        {
+            // HTML etiketlerini temizleyip kısa özet oluştur
+            var cleanText = System.Text.RegularExpressions.Regex.Replace(c.HtmlBody, "<.*?>", " ");
+            cleanText = System.Text.RegularExpressions.Regex.Replace(cleanText, @"\s+", " ").Trim();
+            var excerpt = cleanText.Length > 180 ? cleanText[..180] + "..." : cleanText;
+
+            return new PublicNewsletterDto
+            {
+                Id = c.Id,
+                Subject = c.Subject,
+                Excerpt = excerpt,
+                Category = c.Category ?? "Genel",
+                CoverImageUrl = c.CoverImageUrl,
+                SentAt = c.SentAt,
+                LikesCount = c.Likes
+            };
+        }).ToList();
+
+        return new PagedResult<PublicNewsletterDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<PublicNewsletterDto?> GetPublicNewsletterByIdAsync(int id)
+    {
+        var campaign = await _context.Campaigns
+            .Include(c => c.Feedbacks)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (campaign == null) return null;
+
+        var cleanText = System.Text.RegularExpressions.Regex.Replace(campaign.HtmlBody, "<.*?>", " ");
+        cleanText = System.Text.RegularExpressions.Regex.Replace(cleanText, @"\s+", " ").Trim();
+        var excerpt = cleanText.Length > 180 ? cleanText[..180] + "..." : cleanText;
+
+        return new PublicNewsletterDto
+        {
+            Id = campaign.Id,
+            Subject = campaign.Subject,
+            Excerpt = excerpt,
+            HtmlBody = campaign.HtmlBody,
+            Category = campaign.Category ?? "Genel",
+            CoverImageUrl = campaign.CoverImageUrl,
+            SentAt = campaign.SentAt,
+            LikesCount = campaign.Feedbacks.Count(f => f.IsPositive)
+        };
+    }
 }

@@ -7,4 +7,7 @@ public class CampaignStatsDto
     public double OpenRate { get; set; }
     public int Clicked { get; set; }
     public double ClickRate { get; set; }
+    public int PositiveFeedbackCount { get; set; }
+    public int TotalFeedbackCount { get; set; }
+    public double PositiveFeedbackRate { get; set; }
 }

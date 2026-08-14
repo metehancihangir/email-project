@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import api from '../../api/axiosInstance';
@@ -6,13 +7,31 @@ import { motion } from 'framer-motion';
 import DOMPurify from 'dompurify';
 
 export default function NewsletterPage() {
+  const location = useLocation();
   const [subject, setSubject] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
+  const [category, setCategory] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [uploadedImages, setUploadedImages] = useState([]);
 
   const quillRef = useRef(null);
+
+  // Yapay Zeka Stüdyosu'ndan aktarılan verileri doldur
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.initialSubject) setSubject(location.state.initialSubject);
+      if (location.state.initialHtml) setHtmlBody(location.state.initialHtml);
+      if (location.state.initialCategory) setCategory(location.state.initialCategory);
+      if (location.state.initialCoverImage) setCoverImageUrl(location.state.initialCoverImage);
+      
+      setToast({
+        type: 'success',
+        message: '✨ Yapay Zeka taslağı editöre başarıyla aktarıldı. İnceleyip düzenleyebilirsiniz.'
+      });
+    }
+  }, [location.state]);
 
   const imageHandler = useCallback(() => {
     const input = document.createElement('input');
@@ -34,9 +53,7 @@ export default function NewsletterPage() {
           const quill = quillRef.current.getEditor();
           const range = quill.getSelection(true);
           quill.insertEmbed(range.index, 'image', url);
-          // E-posta uyumluluğu için resme max-width ekle
           quill.formatText(range.index, 1, 'width', '100%');
-          // Resmin altına yazı yazılabilmesi için otomatik boşluk bırak
           quill.insertText(range.index + 1, '\n');
           quill.setSelection(range.index + 2);
 
@@ -71,10 +88,17 @@ export default function NewsletterPage() {
     setToast(null);
 
     try {
-      await api.post('/api/admin/newsletter', { subject, htmlBody });
-      setToast({ type: 'success', message: 'Bülten başarıyla kuyruğa alındı!' });
+      await api.post('/api/admin/newsletter', { 
+        subject, 
+        htmlBody,
+        category: category || null,
+        coverImageUrl: coverImageUrl || null
+      });
+      setToast({ type: 'success', message: 'Bülten başarıyla kuyruğa alındı ve gönderilmeye başlandı!' });
       setSubject('');
       setHtmlBody('');
+      setCategory('');
+      setCoverImageUrl('');
       setUploadedImages([]);
     } catch (err) {
       console.error(err);
@@ -87,10 +111,8 @@ export default function NewsletterPage() {
   const handleEditorChange = (content) => {
     setHtmlBody(content);
     
-    // Check for deleted images
     uploadedImages.forEach(async (url) => {
       if (!content.includes(url)) {
-        // Image was deleted from editor
         try {
           const fileName = url.split('/').pop();
           await api.delete(`/api/admin/images/${fileName}`);
@@ -104,13 +126,24 @@ export default function NewsletterPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-text">Bülten Oluştur</h1>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Bülten Oluştur & Düzenle</h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            Zengin metin editörünü kullanarak abonelerinize özel e-posta bültenleri hazırlayın.
+          </p>
+        </div>
+      </div>
 
       {toast && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`p-4 rounded-xl ${toast.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
+          className={`p-4 rounded-xl text-sm font-medium border ${
+            toast.type === 'success' 
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+              : 'bg-red-50 text-red-800 border-red-200'
+          }`}
         >
           {toast.message}
         </motion.div>
@@ -119,21 +152,57 @@ export default function NewsletterPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Sol Panel: Editör */}
-        <div className="bg-surface p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Konu Başlığı (Subject) *
+              </label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-slate-800"
+                placeholder="Örn: Haftanın Finans Özeti..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Kategori
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-slate-800 bg-white cursor-pointer"
+              >
+                <option value="">Seçiniz</option>
+                <option value="Mitoloji">🏛️ Mitoloji</option>
+                <option value="Bilim">🔬 Bilim</option>
+                <option value="Finans">📈 Finans</option>
+                <option value="Politika">🌍 Politika</option>
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1">Konu (Subject)</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Kapak Görseli URL (İsteğe Bağlı)
+            </label>
             <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-              placeholder="E-posta konusu..."
+              type="url"
+              value={coverImageUrl}
+              onChange={(e) => setCoverImageUrl(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-slate-800"
+              placeholder="https://images.unsplash.com/..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1">İçerik (HTML)</label>
-            <div className="bg-white rounded-xl border border-gray-200">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+              İçerik (HTML) *
+            </label>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                <ReactQuill 
                   ref={quillRef}
                   theme="snow" 
@@ -147,10 +216,12 @@ export default function NewsletterPage() {
 
           {uploadedImages.length > 0 && (
             <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <label className="block text-sm font-medium text-text-muted mb-3">Eklenen Görseller (Silmek için üzerine gelin)</label>
-              <div className="flex flex-wrap gap-4">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                Eklenen Görseller (Silmek için üzerine gelin)
+              </label>
+              <div className="flex flex-wrap gap-3">
                 {uploadedImages.map((url) => (
-                  <div key={url} className="relative group w-20 h-20 rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+                  <div key={url} className="relative group w-16 h-16 rounded-xl border border-gray-200 overflow-hidden bg-white shadow-2xs">
                     <img src={url} alt="Uploaded" className="w-full h-full object-cover" />
                     <button
                       onClick={() => {
@@ -160,8 +231,8 @@ export default function NewsletterPage() {
                         const newHtml = htmlBody.replace(new RegExp(`<img[^>]*src="${url}"[^>]*>`, 'g'), '');
                         setHtmlBody(newHtml);
                       }}
-                      className="absolute top-1 right-1 bg-black/50 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      title="Resmi Sunucudan ve Editörden Sil"
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                      title="Sil"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -171,26 +242,50 @@ export default function NewsletterPage() {
             </div>
           )}
 
-          <div className="pt-8">
+          <div className="pt-4">
             <button
               onClick={handleSend}
               disabled={loading || !subject || !htmlBody}
-              className="w-full py-3 px-4 bg-primary hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-95 flex justify-center items-center"
+              className="w-full py-3 px-4 bg-primary hover:bg-primary-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-md transition-all active:scale-98 flex justify-center items-center gap-2 cursor-pointer"
             >
               {loading ? (
-                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              ) : 'Gönder'}
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Kuyruğa Ekleniyor...</span>
+                </>
+              ) : (
+                <>
+                  <span>🚀</span>
+                  <span>Bülteni Abonelere Gönder</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
         {/* Sağ Panel: Canlı Önizleme */}
-        <div className="bg-surface p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[500px]">
-          <h3 className="text-sm font-medium text-text-muted mb-4 border-b border-gray-100 pb-2">Canlı Önizleme</h3>
-          <div className="flex-1 overflow-y-auto bg-gray-50 rounded-xl p-4 border border-gray-200">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[650px] space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Canlı Önizleme</h3>
+            {category && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                {category}
+              </span>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto bg-slate-50/70 rounded-xl p-6 border border-gray-200 space-y-4">
+             {coverImageUrl && (
+               <div className="rounded-xl overflow-hidden shadow-2xs border border-gray-200 max-h-48">
+                 <img src={coverImageUrl} alt="Kapak" className="w-full h-full object-cover" />
+               </div>
+             )}
+             <h2 className="font-extrabold text-xl text-slate-900">
+               {subject || <span className="text-slate-300 italic">Konu başlığı buraya gelecek...</span>}
+             </h2>
              <div 
-                className="prose max-w-none text-gray-800"
-                dangerouslySetInnerHTML={{ __html: htmlBody ? DOMPurify.sanitize(htmlBody) : '<span class="text-gray-400 italic">İçerik önizlemesi burada görünecek...</span>' }} 
+                className="prose prose-slate max-w-none text-slate-800"
+                dangerouslySetInnerHTML={{ __html: htmlBody ? DOMPurify.sanitize(htmlBody) : '<span class="text-slate-400 italic text-sm">İçerik önizlemesi burada görünecek...</span>' }} 
              />
           </div>
         </div>

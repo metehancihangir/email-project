@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import SubscribePage from './pages/SubscribePage';
 import ConfirmPage from './pages/ConfirmPage';
 import UnsubscribePage from './pages/UnsubscribePage';
@@ -7,6 +8,8 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import HelpPage from './pages/HelpPage';
 import ContactPage from './pages/ContactPage';
 import AboutPage from './pages/AboutPage';
+import ArchivePage from './pages/ArchivePage';
+import NewsletterDetailPage from './pages/NewsletterDetailPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/admin/AdminLayout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -19,12 +22,15 @@ import AIManagerPage from './pages/admin/AIManagerPage';
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* ─── Public Routes ─── */}
         <Route path="/" element={<SubscribePage />} />
         <Route path="/confirm" element={<ConfirmPage />} />
         <Route path="/unsubscribe" element={<UnsubscribePage />} />
         <Route path="/preferences" element={<PreferencesPage />} />
+        <Route path="/arsiv" element={<ArchivePage />} />
+        <Route path="/arsiv/:id" element={<NewsletterDetailPage />} />
         <Route path="/gizlilik-politikasi" element={<PrivacyPolicyPage />} />
         <Route path="/kullanim-kosullari" element={<PrivacyPolicyPage />} />
         <Route path="/hakkimizda" element={<AboutPage />} />
