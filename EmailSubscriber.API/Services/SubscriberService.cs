@@ -139,27 +139,27 @@ public class SubscriberService : ISubscriberService
 
     public async Task<(int StatusCode, string Message)> ResendConfirmationAsync(string email)
     {
-        var subscriber = await _context.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
-        if (subscriber == null || subscriber.IsConfirmed)
-            return (400, "Geçersiz istek.");
+        var result = await ResendConfirmationWithRateLimitAsync(email);
+        if (result.IsSuccess)
+            return (202, result.Message ?? "Onay e-postası gönderildi.");
+        if (result.IsRateLimited)
+            return (429, result.Message ?? "Lütfen bekleyin.");
+        return (400, result.Message ?? "Geçersiz istek.");
+    }
 
-        subscriber.ConfirmationToken = Guid.NewGuid().ToString("N");
-        subscriber.ConfirmationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
-        _context.Subscribers.Update(subscriber);
-        await _context.SaveChangesAsync();
-
-        string confirmUrl = $"{_frontendUrl}/confirm?token={subscriber.ConfirmationToken}";
-        string htmlBody = await _templateService.GetConfirmationEmailHtmlAsync(subscriber.Name ?? "", confirmUrl);
+    public async Task<(int StatusCode, string Message, string? Email)> ValidateUnsubscribeTokenAsync(string token)
+    {
+        var subscriber = await _context.Subscribers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UnsubscribeToken == token);
         
-        var job = new EmailSubscriber.API.Queue.EmailJob(
-            To: subscriber.Email,
-            ToName: subscriber.Name,
-            Subject: "E-Bülten Abonelik Onayı",
-            HtmlBody: htmlBody
-        );
+        if (subscriber == null)
+            return (404, "Kayıt veya bağlantı bulunamadı.", null);
 
-        _emailQueueService.Enqueue(job);
-        return (202, "E-posta gönderildi.");
+        if (!subscriber.IsActive)
+            return (200, "Abonelik zaten iptal edilmiş.", subscriber.Email);
+
+        return (200, "Geçerli token.", subscriber.Email);
     }
 
     public async Task<(int StatusCode, string Message)> UnsubscribeAsync(string token)
@@ -167,7 +167,7 @@ public class SubscriberService : ISubscriberService
         var subscriber = await _context.Subscribers.FirstOrDefaultAsync(s => s.UnsubscribeToken == token);
         
         if (subscriber == null)
-            return (404, "Kayıt bulunamadı.");
+            return (404, "Kayıt veya bağlantı bulunamadı.");
 
         subscriber.IsActive = false;
         subscriber.UnsubscribedAt = DateTime.UtcNow;
@@ -177,7 +177,7 @@ public class SubscriberService : ISubscriberService
         _context.Subscribers.Update(subscriber);
         await _context.SaveChangesAsync();
 
-        return (200, "Abonelik iptal edildi.");
+        return (200, "Abonelik başarıyla iptal edildi.");
     }
 
     public async Task<(int StatusCode, string Message, string? Interests)> GetPreferencesAsync(string token)
@@ -215,15 +215,27 @@ public class SubscriberService : ISubscriberService
         var now = DateTime.UtcNow;
         var cooldownThreshold = now.AddMinutes(-CooldownMinutes);
 
-        // 2.3.3: Atomic conditional UPDATE — okuma + yazma tek statement'ta.
-        // Etkilenen satır sayısı 0 ise => subscriber yok, onaylı, veya cooldown aktif.
-        var affected = await _context.Database.ExecuteSqlRawAsync(
-            @"UPDATE Subscribers
-              SET LastCodeRequestedAt = {0}
-              WHERE Email = {1}
-                AND IsConfirmed = 0
-                AND (LastCodeRequestedAt IS NULL OR LastCodeRequestedAt < {2})",
-            now, email, cooldownThreshold);
+        int affected = 0;
+        if (_context.Database.IsRelational())
+        {
+            affected = await _context.Database.ExecuteSqlRawAsync(
+                @"UPDATE Subscribers
+                  SET LastCodeRequestedAt = {0}
+                  WHERE Email = {1}
+                    AND IsConfirmed = 0
+                    AND (LastCodeRequestedAt IS NULL OR LastCodeRequestedAt < {2})",
+                now, email, cooldownThreshold);
+        }
+        else
+        {
+            var memSub = await _context.Subscribers.FirstOrDefaultAsync(s => s.Email == email && !s.IsConfirmed && (s.LastCodeRequestedAt == null || s.LastCodeRequestedAt < cooldownThreshold));
+            if (memSub != null)
+            {
+                memSub.LastCodeRequestedAt = now;
+                await _context.SaveChangesAsync();
+                affected = 1;
+            }
+        }
 
         if (affected == 0)
         {

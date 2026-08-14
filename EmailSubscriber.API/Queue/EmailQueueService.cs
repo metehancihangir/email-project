@@ -5,7 +5,10 @@ namespace EmailSubscriber.API.Queue;
 
 public class EmailQueueService : IEmailQueueService
 {
-    private readonly Channel<EmailJob> _channel = Channel.CreateUnbounded<EmailJob>();
+    private readonly Channel<EmailJob> _channel = Channel.CreateBounded<EmailJob>(new BoundedChannelOptions(10000)
+    {
+        FullMode = BoundedChannelFullMode.Wait
+    });
 
     public void Enqueue(EmailJob job)
     {

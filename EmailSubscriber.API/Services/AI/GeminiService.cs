@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
@@ -11,13 +13,20 @@ namespace EmailSubscriber.API.Services.AI;
 public class GeminiService : IAIService
 {
     private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
     private readonly string _apiKey;
     private readonly string _fallbackApiKey;
     private readonly ILogger<GeminiService> _logger;
+    private static readonly HttpClient _safeImageHttpClient = CreateSafeImageHttpClient();
 
     public GeminiService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
+        _configuration = configuration;
+        if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
+        {
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        }
         _apiKey = configuration["Gemini:ApiKey"] ?? "";
         _fallbackApiKey = configuration["Gemini:FallbackApiKey"] ?? "";
         _logger = logger;
@@ -42,7 +51,7 @@ public class GeminiService : IAIService
 1. Özellikle Yunan mitolojisi, savaş tanrıları (örn. Ares), rüzgar tanrıları veya doğa olaylarının mitolojik kökenleri gibi konuları işlerken karakterlerin soyağaçlarında kaybolma. Ana hikayeye ve sembolizme odaklan.
 2. Vurgulama Kuralları: Önemli karakter adlarını, mitolojik eşyaları ve mekanları HTML <b> etiketi kullanarak kalın (bold) font ile yaz. KESİNLİKLE MARKDOWN (**) KULLANMA. Geri kalan metin normal olmalı.
 3. Dilin akademik değil, hikaye anlatıcısı tadında ama net ve sade olmalı.
-4. Kaynakçaları (URL'leri) KESİNLİKLE `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap.
+4. Kaynakça (URL) verirken KESİNLİKLE uydurma (hallucinated) linkler kullanma. Sadece gerçekliğinden emin olduğun, konuyla ilgili Wikipedia sayfalarının linklerini (örn: https://tr.wikipedia.org/wiki/Zeus) kullan ve `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap.
 
 Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> vb.) olarak ver, markdown (```html) KULLANMA:
 
@@ -64,8 +73,8 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
 <hr />
 <h3>Kaynakça</h3>
 <ul>
-<li><a href=""[Gerçek Kaynak Linki 1]"">[Faydalanılan Kaynak/Yazar Adı]</a></li>
-<li><a href=""[Gerçek Kaynak Linki 2]"">[Faydalanılan Kaynak/Yazar Adı]</a></li>
+<li><a href=""[Gerçek Wikipedia Linki 1]"">[Wikipedia Makale Adı]</a></li>
+<li><a href=""[Gerçek Wikipedia Linki 2]"">[Wikipedia Makale Adı]</a></li>
 </ul>";
                 break;
 
@@ -110,13 +119,18 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
                 break;
 
             case "bilim":
+                var scienceContext = await GetLatestScienceNewsAsync();
                 systemPrompt = $@"Sen uzman, yenilikçi ve sade bir dille yazan bir Bilim ve Teknoloji Bülteni editörüsün. Görevin, yeni bilimsel keşifleri, yazılım dünyasındaki gelişmeleri veya mühendislik başarılarını herkesin anlayabileceği bir netlikte açıklamaktır.
+
+Aşağıda bugün bilim ve teknoloji dünyasında olan en güncel haberler verilmiştir. BÜLTENİ KESİNLİKLE BU HABERLERİ BAZ ALARAK VE YORUMLAYARAK YAZ:
+
+{scienceContext}
 
 ÖZEL TALİMATLAR:
 1. Karmaşık algoritmaları, yeni nesil teknolojileri (yapay zeka, yazılım mimarileri vb.) veya temel bilimsel keşifleri anlatırken teknik boğuculuktan kaçın. Gerekirse günlük hayattan sade analojiler kullan.
 2. Vurgulama Kuralları: Yalnızca bilimsel terimleri, teknoloji/yazılım adlarını, keşfi yapan kurum/kişileri ve yılları HTML <b> etiketi kullanarak kalın (bold) font ile yaz. KESİNLİKLE MARKDOWN (**) KULLANMA.
 3. Gelişmenin ""nasıl"" olduğundan çok ""neden önemli"" olduğuna ve gelecekte neyi değiştireceğine odaklan.
-4. Kaynakçaları (URL'leri) KESİNLİKLE `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap.
+4. Kaynakçaları (URL'leri) KESİNLİKLE `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap. Verilen güncel haberlerin linklerini KESİNLİKLE kaynakça bölümünde kullan ve uydurma (hallucinated) linkler KULLANMA.
 
 Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> vb.) olarak ver, markdown (```html) KULLANMA:
 
@@ -138,8 +152,8 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
 <hr />
 <h3>Kaynakça</h3>
 <ul>
-<li><a href=""[Gerçek Kaynak Linki 1]"">[Keşfin yayınlandığı makale/dergi]</a></li>
-<li><a href=""[Gerçek Kaynak Linki 2]"">[Faydalanılan bilimsel kaynak]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 1]"">[Haberin alındığı platform/kurum]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 2]"">[İkinci Kaynak/Rapor]</a></li>
 </ul>";
                 break;
 
@@ -214,11 +228,12 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
         {
             try
             {
-                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={currentApiKey}";
+                var apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl)
                 {
                     Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
                 };
+                requestMessage.Headers.Add("x-goog-api-key", currentApiKey);
 
                 var response = await _httpClient.SendAsync(requestMessage);
                 
@@ -259,105 +274,197 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
         return string.Empty;
     }
 
-    public async Task<string?> GetImageUrlForTopicAsync(string category, string topic, string htmlContent = "")
+    public Task<string?> GetImageUrlForTopicAsync(string category, string topic, string htmlContent = "")
     {
-        // 1. Önce htmlContent içindeki linkleri (href) bulup og:image çekmeyi deneyelim.
-        if (!string.IsNullOrEmpty(htmlContent))
+        var normalizedCategory = category.ToLowerInvariant().Trim();
+        var textToSearch = $"{topic} {htmlContent}".ToLowerInvariant();
+
+        string selectedUrl = normalizedCategory switch
         {
-            var hrefMatches = Regex.Matches(htmlContent, @"href=""(http[s]?://[^""]+)""");
-            foreach (Match match in hrefMatches.Take(3)) // İlk 3 linke bakalım (hız için)
+            "mitoloji" => GetMythologyImage(textToSearch),
+            "finans" => GetFinanceImage(textToSearch),
+            "bilim" => GetScienceImage(textToSearch),
+            "politika" => GetPoliticsImage(textToSearch),
+            _ => "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop"
+        };
+
+        _logger.LogInformation("{Category} bülteni için konuya özel güvenli görsel belirlendi: {Url}", category, selectedUrl);
+        return Task.FromResult<string?>(selectedUrl);
+    }
+
+    private static string GetMythologyImage(string text)
+    {
+        if (text.Contains("zeus") || text.Contains("jüpiter") || text.Contains("olimpos") || text.Contains("şimşek"))
+            return "https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=800&auto=format&fit=crop"; // Antik Yunan Tapınağı
+
+        if (text.Contains("poseidon") || text.Contains("neptün") || text.Contains("deniz") || text.Contains("okyanus"))
+            return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=800&auto=format&fit=crop"; // Okyanus & Fırtına
+
+        if (text.Contains("athena") || text.Contains("akropolis") || text.Contains("parthenon") || text.Contains("truva"))
+            return "https://images.unsplash.com/photo-1555993539-1732b0258235?q=80&w=800&auto=format&fit=crop"; // Parthenon Tapınağı
+
+        if (text.Contains("apollon") || text.Contains("sanat") || text.Contains("müzik") || text.Contains("afrodit"))
+            return "https://images.unsplash.com/photo-1576014131341-fe1486fb2475?q=80&w=800&auto=format&fit=crop"; // Klasik Sanat & Heykel
+
+        if (text.Contains("ikarus") || text.Contains("güneş") || text.Contains("kanat") || text.Contains("daidalos"))
+            return "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop"; // Gökyüzü & Kanat
+
+        // Ares, Hades, Hermes ve Genel Mitoloji için Klasik Mermer Heykel
+        return "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=800&auto=format&fit=crop";
+    }
+
+    private static string GetFinanceImage(string text)
+    {
+        if (text.Contains("kripto") || text.Contains("bitcoin") || text.Contains("blockchain") || text.Contains("btc"))
+            return "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop"; // Kripto & Dijital Varlık
+
+        if (text.Contains("altın") || text.Contains("emtia") || text.Contains("petrol") || text.Contains("gümüş"))
+            return "https://images.unsplash.com/photo-1610375461246-83df859d849d?q=80&w=800&auto=format&fit=crop"; // Altın Külçeleri
+
+        if (text.Contains("enflasyon") || text.Contains("faiz") || text.Contains("merkez bankası") || text.Contains("tcmb") || text.Contains("fed") || text.Contains("dolar"))
+            return "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=800&auto=format&fit=crop"; // Para & Merkez Bankacılığı
+
+        if (text.Contains("bist") || text.Contains("borsa") || text.Contains("hisse") || text.Contains("nasdaq") || text.Contains("endeks"))
+            return "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=800&auto=format&fit=crop"; // Borsa & Piyasa Grafik Ekranı
+
+        // Genel Finans
+        return "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=800&auto=format&fit=crop";
+    }
+
+    private static string GetScienceImage(string text)
+    {
+        if (text.Contains("yapay zeka") || text.Contains("robot") || text.Contains("yazılım") || text.Contains("bilgisayar") || text.Contains("algoritma"))
+            return "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop"; // Yapay Zeka & Sinir Ağları
+
+        if (text.Contains("kuantum") || text.Contains("fizik") || text.Contains("laboratuvar") || text.Contains("dna") || text.Contains("biyoloji") || text.Contains("tıp") || text.Contains("genetik"))
+            return "https://images.unsplash.com/photo-1507413245164-6160d8298b31?q=80&w=800&auto=format&fit=crop"; // Bilimsel Araştırma & Laboratuvar
+
+        // Uzay, James Webb, Gezegenler, Karadelik ve Genel Bilim
+        return "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop";
+    }
+
+    private static string GetPoliticsImage(string text)
+    {
+        if (text.Contains("meclis") || text.Contains("parlamento") || text.Contains("yasa") || text.Contains("kanun") || text.Contains("hükümet") || text.Contains("seçim"))
+            return "https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?q=80&w=800&auto=format&fit=crop"; // Parlamento Binası
+
+        if (text.Contains("lider") || text.Contains("zirve") || text.Contains("başkan") || text.Contains("bakan") || text.Contains("açıklama") || text.Contains("basın"))
+            return "https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?q=80&w=800&auto=format&fit=crop"; // Küresel Zirve & Basın Toplantısı
+
+        // Diplomasi, Birleşmiş Milletler, Dış Politika ve Genel Politika
+        return "https://images.unsplash.com/photo-1541872703-74c5e44368f9?q=80&w=800&auto=format&fit=crop";
+    }
+
+    private static HttpClient CreateSafeImageHttpClient()
+    {
+        var handler = new SocketsHttpHandler
+        {
+            ConnectCallback = async (context, cancellationToken) =>
             {
-                var link = match.Groups[1].Value;
+                var host = context.DnsEndPoint.Host;
+                var port = context.DnsEndPoint.Port;
+
+                var addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
+                var safeAddress = addresses.FirstOrDefault(ip => IsSafeIpAddress(ip));
+                if (safeAddress == null)
+                {
+                    throw new InvalidOperationException($"Güvenli olmayan veya iç ağ hedef IP tespit edildi: {host}");
+                }
+
+                var socket = new Socket(safeAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 try
                 {
-                    // Kısa bir timeout ile linke istek atalım
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                    var html = await _httpClient.GetStringAsync(link, cts.Token);
-                    
-                    var ogImageMatch = Regex.Match(html, @"<meta\s+(?:[^>]*?content=""([^""]+)""[^>]*?(?:property|name)=""og:image""|[^>]*?(?:property|name)=""og:image""[^>]*?content=""([^""]+)"")[^>]*?>", RegexOptions.IgnoreCase);
-                    if (ogImageMatch.Success)
-                    {
-                        var imageUrl = !string.IsNullOrEmpty(ogImageMatch.Groups[1].Value) ? ogImageMatch.Groups[1].Value : ogImageMatch.Groups[2].Value;
-                        _logger.LogInformation("og:image bulundu: {ImageUrl}", imageUrl);
-                        return imageUrl;
-                    }
+                    await socket.ConnectAsync(safeAddress, port, cancellationToken);
+                    return new NetworkStream(socket, ownsSocket: true);
                 }
-                catch (Exception ex)
+                catch
                 {
-                    _logger.LogWarning(ex, "Linkten og:image alınamadı: {Link}", link);
+                    socket.Dispose();
+                    throw;
                 }
-            }
-        }
-
-        // 2. Eğer og:image bulunamazsa, AI ile İngilizce keyword üret ve Unsplash Random endpoint'ini kullan.
-        var requestBody = new
-        {
-            contents = new[]
-            {
-                new { parts = new[] { new { text = $"Bu metni ('{topic}' konusu ve '{category}' kategorisi) okuyup, arka planda görsel aramak için kullanılacak en fazla 3 kelimelik, somut bir İngilizce arama terimi üret. Sadece terimi yaz, aralarına virgül koy. (Örn: stock market red, space star galaxy)" } } }
-            }
+            },
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            AllowAutoRedirect = false // Otomatik yönlendirmeler ile iç ağa atlamayı engelle
         };
 
-        string keywords = category.ToLower() switch
+        var client = new HttpClient(handler)
         {
-            "mitoloji" => "mythology,ancient",
-            "bilim" => "science,space",
-            "finans" => "finance,money",
-            "politika" => "politics,government",
-            _ => "abstract"
+            Timeout = TimeSpan.FromSeconds(8)
         };
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        return client;
+    }
 
-        int maxRetries = 5;
-        string currentApiKey = _apiKey;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
+    public static bool IsSafeIpAddress(IPAddress ip)
+    {
+        if (ip.IsIPv4MappedToIPv6)
         {
-            try
-            {
-                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={currentApiKey}";
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl);
-                requestMessage.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.SendAsync(requestMessage);
-
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && !string.IsNullOrEmpty(_fallbackApiKey) && currentApiKey != _fallbackApiKey)
-                {
-                    _logger.LogWarning("Gemini API kota aşımı (429 Too Many Requests) keyword araması için. Fallback API anahtarına geçiliyor...");
-                    currentApiKey = _fallbackApiKey;
-                    attempt--;
-                    continue;
-                }
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseJson = await response.Content.ReadAsStringAsync();
-                    var jsonDoc = JsonDocument.Parse(responseJson);
-                    
-                    var aiKeywords = jsonDoc.RootElement
-                        .GetProperty("candidates")[0]
-                        .GetProperty("content")
-                        .GetProperty("parts")[0]
-                        .GetProperty("text")
-                        .GetString()?.Trim();
-
-                    if (!string.IsNullOrEmpty(aiKeywords))
-                    {
-                        keywords = aiKeywords.Replace(" ", "").Replace("\n", "").ToLower();
-                    }
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, $"Görsel keyword'leri alınırken hata oluştu. (Deneme {attempt}/{maxRetries})");
-                if (attempt < maxRetries) await Task.Delay(5000);
-            }
+            ip = ip.MapToIPv4();
         }
-        
-        _logger.LogInformation("Görsel için kullanılacak kelimeler: {Keywords}", keywords);
-        // images.unsplash.com/random endpointi yönlendirme (redirect) yaptığı için Gmail gibi bazı e-posta istemcilerinde resmi kırık gösterebilir.
-        // Bu yüzden stabil olan ve rastgele stok fotoğraf döndüren alternatif bir servisi kullanıyoruz.
-        return $"https://loremflickr.com/800/400/{keywords.Replace(",", ",")}/all";
+
+        if (IPAddress.IsLoopback(ip))
+            return false;
+
+        if (ip.IsIPv6LinkLocal || ip.IsIPv6Multicast || ip.IsIPv6SiteLocal)
+            return false;
+
+        if (ip.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = ip.GetAddressBytes();
+
+            // 0.0.0.0/8 (Current network)
+            if (bytes[0] == 0) return false;
+
+            // 10.0.0.0/8 (Private Network)
+            if (bytes[0] == 10) return false;
+
+            // 127.0.0.0/8 (Loopback)
+            if (bytes[0] == 127) return false;
+
+            // 169.254.0.0/16 (Link-Local & Cloud Metadata e.g. AWS/Azure/GCP 169.254.169.254)
+            if (bytes[0] == 169 && bytes[1] == 254) return false;
+
+            // 172.16.0.0/12 (Private Network: 172.16.0.0 - 172.31.255.255)
+            if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return false;
+
+            // 192.168.0.0/16 (Private Network)
+            if (bytes[0] == 192 && bytes[1] == 168) return false;
+
+            // 224.0.0.0/4 (Multicast)
+            if (bytes[0] >= 224 && bytes[0] <= 239) return false;
+
+            // 240.0.0.0/4 (Reserved)
+            if (bytes[0] >= 240) return false;
+        }
+
+        return true;
+    }
+
+    private static async Task<bool> IsSafePublicUrlAsync(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        // Yalnızca HTTP/HTTPS protokollerine izin ver
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            return false;
+
+        var host = uri.DnsSafeHost.ToLowerInvariant();
+        if (host == "localhost" || host.EndsWith(".localhost") || host == "127.0.0.1" || host == "::1" || host == "169.254.169.254")
+            return false;
+
+        try
+        {
+            var addresses = await Dns.GetHostAddressesAsync(host);
+            if (addresses == null || addresses.Length == 0)
+                return false;
+
+            return addresses.Any(IsSafeIpAddress);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<string> GetLatestFinanceNewsAsync()
@@ -430,6 +537,43 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Politika RSS feed çekilemedi, varsayılan politika istemiyle devam edilecek.");
+            return string.Empty;
+        }
+    }
+
+    private async Task<string> GetLatestScienceNewsAsync()
+    {
+        try
+        {
+            var rssUrl = "https://evrimagaci.org/rss.xml";
+            var response = await _httpClient.GetStringAsync(rssUrl);
+            var doc = XDocument.Parse(response);
+            
+            var items = doc.Descendants("item").Take(3);
+            var sb = new StringBuilder();
+            sb.AppendLine("GÜNCEL BİLİM HABERLERİ:");
+            foreach (var item in items)
+            {
+                var title = item.Element("title")?.Value;
+                var description = item.Element("description")?.Value;
+                var link = item.Element("link")?.Value;
+                
+                // HTML etiketlerini temizleyelim
+                if (!string.IsNullOrEmpty(description))
+                {
+                    description = Regex.Replace(description, "<.*?>", string.Empty);
+                }
+                
+                sb.AppendLine($"- Başlık: {title}");
+                sb.AppendLine($"  Özet: {description}");
+                sb.AppendLine($"  Link: {link}");
+                sb.AppendLine();
+            }
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Bilim RSS feed çekilemedi, varsayılan bilim istemiyle devam edilecek.");
             return string.Empty;
         }
     }

@@ -22,9 +22,10 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
         {
             builder.ConfigureAppConfiguration((context, config) =>
             {
-                config.AddInMemoryCollection(new Dictionary<string, string>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" }
+                    { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" },
+                    { "Jwt:Secret", "SuperSecretJwtKeyForEmailSubscriberProject2026SecureKey!" }
                 });
             });
 
@@ -114,7 +115,7 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
     {
         // Arrange
         var client = _factory.CreateClient();
-        var request = new SubscribeRequest("bot@example.com", "Bot", "http://spam.com"); // website is filled
+        var request = new SubscribeRequest("bot@example.com", "Bot", null, "http://spam.com"); // website is filled
 
         // Act
         var response = await client.PostAsJsonAsync("/api/subscribers", request);
@@ -130,15 +131,15 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
         var client = _factory.CreateClient();
         var request = new SubscribeRequest("rate@example.com", "Rate User", null);
 
-        // Act - Send 101 requests rapidly. Limit is 100 per minute.
-        HttpResponseMessage lastResponse = null;
-        for (int i = 0; i < 101; i++)
+        // Act - Send 11 requests rapidly. Limit is 10 per minute for Subscribe endpoint.
+        HttpResponseMessage? lastResponse = null;
+        for (int i = 0; i < 11; i++)
         {
             lastResponse = await client.PostAsJsonAsync("/api/subscribers", request);
         }
 
         // Assert
-        // The 101st request should be 429 Too Many Requests
+        // The 11th request should be 429 Too Many Requests
         Assert.NotNull(lastResponse);
         Assert.Equal(HttpStatusCode.TooManyRequests, lastResponse.StatusCode);
     }
@@ -246,12 +247,12 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
-    public async Task Get_Unsubscribe_ValidToken_ReturnsOk() // 3.3.5
+    public async Task Get_Unsubscribe_ValidToken_ReturnsOk_AndKeepsActive() // Safe GET check (anti-bot)
     {
         // Arrange
         var client = _factory.CreateClient();
-        string email = "unsubscribe@example.com";
-        string token = "test-unsub-token-123";
+        string email = "unsubscribe_get@example.com";
+        string token = "test-unsub-token-get-123";
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -259,8 +260,36 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
             await db.SaveChangesAsync();
         }
 
-        // Act
+        // Act - GET check
         var response = await client.GetAsync($"/api/subscribers/unsubscribe/{token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var sub = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
+            // User should STILL be active on GET (anti-scanner protection)
+            Assert.True(sub.IsActive);
+        }
+    }
+
+    [Fact]
+    public async Task Post_Unsubscribe_ValidToken_DeactivatesSubscriber() // State changing POST
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        string email = "unsubscribe_post@example.com";
+        string token = "test-unsub-token-post-123";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Subscribers.Add(new Subscriber { Email = email, IsActive = true, UnsubscribeToken = token });
+            await db.SaveChangesAsync();
+        }
+
+        // Act - POST unsubscribe
+        var response = await client.PostAsync($"/api/subscribers/unsubscribe/{token}", null);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -270,6 +299,7 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
             var sub = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
             Assert.False(sub.IsActive);
             Assert.NotNull(sub.UnsubscribedAt);
+            Assert.Null(sub.UnsubscribeToken);
         }
     }
 }

@@ -1,5 +1,6 @@
 using EmailSubscriber.API.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -27,9 +28,47 @@ try
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 32))));
 
+    // ─── Reverse Proxy / Forwarded Headers Configuration ─────────────────────
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+        // Yalnızca açıkça yapılandırılmış proxy ve ağlara güvenilir.
+        // Doğrudan dış istemcilerin X-Forwarded-For başlığıyla IP spoofing yapması ve rate limiter'ı atlatması engellenir.
+        var knownProxies = builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>();
+        if (knownProxies != null && knownProxies.Length > 0)
+        {
+            options.KnownProxies.Clear();
+            foreach (var proxy in knownProxies)
+            {
+                if (System.Net.IPAddress.TryParse(proxy, out var ip))
+                {
+                    options.KnownProxies.Add(ip);
+                }
+            }
+        }
+
+        var knownNetworks = builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>();
+        if (knownNetworks != null && knownNetworks.Length > 0)
+        {
+            options.KnownNetworks.Clear();
+            foreach (var network in knownNetworks)
+            {
+                var parts = network.Split('/');
+                if (parts.Length == 2 && System.Net.IPAddress.TryParse(parts[0], out var ip) && int.TryParse(parts[1], out var prefix))
+                {
+                    options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(ip, prefix));
+                }
+            }
+        }
+    });
+
     // ─── JWT Authentication ──────────────────────────────────────────────────
-    var jwtSecret = builder.Configuration["Jwt:Secret"]
-        ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
+    var jwtSecret = builder.Configuration["Jwt:Secret"];
+    if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+    {
+        throw new InvalidOperationException("Jwt:Secret is not configured or is shorter than 32 characters (256-bit).");
+    }
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
@@ -47,7 +86,8 @@ try
     builder.Services.AddAuthorization();
 
     // ─── CORS ────────────────────────────────────────────────────────────────
-    var frontendUrls = new[] { "http://localhost:5173", "http://localhost:5174" };
+    var frontendUrls = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? new[] { "http://localhost:5173", "http://localhost:5174" };
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("FrontendPolicy", policy =>
@@ -56,18 +96,54 @@ try
                 .AllowAnyMethod());
     });
 
-    // ─── Rate Limiting (Faz 1'de genişletilecek) ─────────────────────────────
+    // ─── Rate Limiting (IP Bazlı Partitioning & Brute-Force Koruması) ──────────
     builder.Services.AddRateLimiter(options =>
     {
-        options.AddFixedWindowLimiter("Api", opt =>
+        // 1. Genel API limiter (İstemci IP'si başına 100 req/dk)
+        options.AddPolicy("Api", context =>
         {
-            opt.Window = TimeSpan.FromMinutes(1);
-            opt.PermitLimit = 100;
-            opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-            opt.QueueLimit = 0; // Kuyrukta bekleme yok, direkt reddet.
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 100,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
         });
-        
+
+        // 2. Admin Login limiter (İstemci IP'si başına 5 req/dk - Kaba kuvvet engelleme)
+        options.AddPolicy("Login", context =>
+        {
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 5,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+        });
+
+        // 3. Abone Kayıt (Subscribe) limiter (İstemci IP'si başına 10 req/dk - Spam ve E-posta Bombardımanı Koruması)
+        options.AddPolicy("Subscribe", context =>
+        {
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 10,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+        });
+
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.OnRejected = async (context, token) =>
+        {
+            context.HttpContext.Response.ContentType = "application/json";
+            await context.HttpContext.Response.WriteAsync("{\"message\": \"Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyin.\"}", token);
+        };
     });
 
     builder.Services.AddSingleton<EmailSubscriber.API.Queue.IEmailQueueService, EmailSubscriber.API.Queue.EmailQueueService>();
@@ -113,20 +189,43 @@ try
     // ─── Build App ───────────────────────────────────────────────────────────
     var app = builder.Build();
 
+    app.UseForwardedHeaders();
     app.UseSerilogRequestLogging();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
+
+    // Security Headers (XSS, Clickjacking, Sniffing & CSP)
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+        context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data: https:;";
+        await next();
+    });
+
     app.UseHttpsRedirection();  // req. 4.3 — HTTPS zorunluluğu
     
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "EmailSubscriber API v1"));
+    // Swagger sadece Development ortamında aktif edilir (Production ortamında kapatılır)
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "EmailSubscriber API v1"));
+    }
     
     // Enable serving static files from wwwroot
     app.UseStaticFiles();
 
+    app.UseRouting();
     app.UseCors("FrontendPolicy");
-    app.UseRateLimiter(); // Apply general rate limiter if needed, but we apply to endpoints
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapControllers().RequireRateLimiting("Api");
+    app.MapControllers();
 
     // ─── Health Check ─────────────────────────────────────────────────────────
     app.MapGet("/health", () => Results.Ok(new { status = "OK", timestamp = DateTime.UtcNow }));

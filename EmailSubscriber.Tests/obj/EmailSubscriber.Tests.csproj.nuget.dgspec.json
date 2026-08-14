@@ -61,9 +61,13 @@
               "target": "Package",
               "version": "[1.12.4, )"
             },
+            "HtmlSanitizer": {
+              "target": "Package",
+              "version": "[9.2.995, )"
+            },
             "MailKit": {
               "target": "Package",
-              "version": "[4.12.1, )"
+              "version": "[4.17.0, )"
             },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
@@ -90,6 +94,10 @@
             "Serilog.AspNetCore": {
               "target": "Package",
               "version": "[9.0.0, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[6.6.2, )"
             }
           },
           "imports": [

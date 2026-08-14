@@ -14,12 +14,18 @@ public class AdminService : IAdminService
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly EmailSubscriber.API.Queue.IEmailQueueService _emailQueue;
+    private readonly ITrackingService _trackingService;
 
-    public AdminService(AppDbContext context, IConfiguration configuration, EmailSubscriber.API.Queue.IEmailQueueService emailQueue)
+    public AdminService(
+        AppDbContext context, 
+        IConfiguration configuration, 
+        EmailSubscriber.API.Queue.IEmailQueueService emailQueue,
+        ITrackingService trackingService)
     {
         _context = context;
         _configuration = configuration;
         _emailQueue = emailQueue;
+        _trackingService = trackingService;
     }
 
     public Task<string?> LoginAsync(string username, string password)
@@ -186,10 +192,14 @@ public class AdminService : IAdminService
 
         int recipientCount = activeSubscribers.Count;
 
+        // XSS Koruması: Manuel bülten içeriğini göndermeden önce temizliyoruz
+        var sanitizer = new Ganss.Xss.HtmlSanitizer();
+        var safeHtmlBody = sanitizer.Sanitize(htmlBody);
+
         var campaign = new Campaign
         {
             Subject = subject,
-            HtmlBody = htmlBody,
+            HtmlBody = safeHtmlBody,
             SentAt = DateTime.UtcNow,
             RecipientCount = recipientCount
         };
@@ -213,7 +223,7 @@ public class AdminService : IAdminService
             await _context.SaveChangesAsync();
 
             var doc = new HtmlAgilityPack.HtmlDocument();
-            doc.LoadHtml(htmlBody);
+            doc.LoadHtml(safeHtmlBody);
             
             var aNodes = doc.DocumentNode.SelectNodes("//a[@href]");
             if (aNodes != null)
@@ -239,7 +249,8 @@ public class AdminService : IAdminService
                 await _context.SaveChangesAsync();
             }
 
-            string trackingPixel = $"<img src=\"{host}/api/track/open/{campaign.Id}/{sub.Id}\" width=\"1\" height=\"1\" style=\"display:none;\" />";
+            string sig = _trackingService.GenerateOpenSignature(campaign.Id, sub.Id);
+            string trackingPixel = $"<img src=\"{host}/api/track/open/{campaign.Id}/{sub.Id}?sig={sig}\" width=\"1\" height=\"1\" style=\"display:none;\" />";
             string bodyWithTracking = doc.DocumentNode.OuterHtml + trackingPixel;
 
             var unsubToken = sub.UnsubscribeToken;

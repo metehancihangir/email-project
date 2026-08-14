@@ -1,11 +1,13 @@
 using EmailSubscriber.API.DTOs;
 using EmailSubscriber.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EmailSubscriber.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("Api")]
 public class SubscribersController : ControllerBase
 {
     private readonly ISubscriberService _subscriberService;
@@ -16,6 +18,7 @@ public class SubscribersController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("Subscribe")]
     public async Task<IActionResult> Subscribe([FromBody] SubscribeRequest request)
     {
         // 1. Honeypot kontrolü (Bot Koruması)
@@ -63,8 +66,7 @@ public class SubscribersController : ControllerBase
     }
 
     /// <summary>
-    /// Eski resend endpoint'i (rate-limiting yok) — geriye dönük uyumluluk için korunuyor.
-    /// Yeni istekler için resend-confirmation-v2 kullanılmalı.
+    /// Geriye dönük uyumluluk için korunan endpoint. Artık rate-limiting ve cooldown kontrollerine tabi tutulur.
     /// </summary>
     [HttpPost("resend-confirmation")]
     public async Task<IActionResult> ResendConfirmation([FromBody] ResendRequest request)
@@ -72,12 +74,29 @@ public class SubscribersController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var (statusCode, message) = await _subscriberService.ResendConfirmationAsync(request.Email);
+        var result = await _subscriberService.ResendConfirmationWithRateLimitAsync(request.Email);
 
-        if (statusCode == 202)
-            return Accepted(new { message });
-            
-        return StatusCode(statusCode, new { message });
+        if (result.IsSuccess)
+        {
+            return Accepted(new
+            {
+                message = result.Message,
+                nextAllowedAt = result.NextAllowedAt?.ToString("o")
+            });
+        }
+
+        if (result.IsRateLimited)
+        {
+            Response.Headers["Retry-After"] = result.RetryAfterSeconds!.Value.ToString();
+            return StatusCode(429, new
+            {
+                message = result.Message,
+                retryAfterSeconds = result.RetryAfterSeconds,
+                nextAllowedAt = result.NextAllowedAt?.ToString("o")
+            });
+        }
+
+        return BadRequest(new { message = result.Message });
     }
 
     // ─── Faz 2: Rate-Limited Resend Endpoints ────────────────────────────────
@@ -142,7 +161,25 @@ public class SubscribersController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Unsubscribe token doğrulama (Salt-Okunur). E-posta güvenlik tarayıcılarının
+    /// HTTP GET ön taramasında kullanıcının yanlışlıkla abonelikten çıkmasını engeller.
+    /// </summary>
     [HttpGet("unsubscribe/{token}")]
+    public async Task<IActionResult> CheckUnsubscribeToken(string token)
+    {
+        var (statusCode, message, email) = await _subscriberService.ValidateUnsubscribeTokenAsync(token);
+        
+        if (statusCode == 200)
+            return Ok(new { message, email });
+            
+        return StatusCode(statusCode, new { message });
+    }
+
+    /// <summary>
+    /// Kullanıcının butona tıklamasıyla abonelikten çıkma işlemini gerçekleştiren endpoint (State-Changing POST).
+    /// </summary>
+    [HttpPost("unsubscribe/{token}")]
     public async Task<IActionResult> Unsubscribe(string token)
     {
         var (statusCode, message) = await _subscriberService.UnsubscribeAsync(token);
