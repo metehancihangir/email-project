@@ -15,6 +15,7 @@ public interface ISubscriberService
     /// </summary>
     Task<(bool IsDisabled, DateTime? NextAllowedAt)> GetResendStatusAsync(string email);
 
+    Task<(int StatusCode, string Message, string? Email)> ValidateUnsubscribeTokenAsync(string token);
     Task<(int StatusCode, string Message)> UnsubscribeAsync(string token);
     
     Task<(int StatusCode, string Message, string? Interests)> GetPreferencesAsync(string token);

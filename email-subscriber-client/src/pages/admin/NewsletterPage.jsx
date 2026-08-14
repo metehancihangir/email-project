@@ -3,6 +3,7 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import api from '../../api/axiosInstance';
 import { motion } from 'framer-motion';
+import DOMPurify from 'dompurify';
 
 export default function NewsletterPage() {
   const [subject, setSubject] = useState('');
@@ -189,7 +190,7 @@ export default function NewsletterPage() {
           <div className="flex-1 overflow-y-auto bg-gray-50 rounded-xl p-4 border border-gray-200">
              <div 
                 className="prose max-w-none text-gray-800"
-                dangerouslySetInnerHTML={{ __html: htmlBody || '<span class="text-gray-400 italic">İçerik önizlemesi burada görünecek...</span>' }} 
+                dangerouslySetInnerHTML={{ __html: htmlBody ? DOMPurify.sanitize(htmlBody) : '<span class="text-gray-400 italic">İçerik önizlemesi burada görünecek...</span>' }} 
              />
           </div>
         </div>

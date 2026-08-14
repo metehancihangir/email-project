@@ -1,11 +1,13 @@
 using EmailSubscriber.API.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmailSubscriber.API.Controllers;
 
 [ApiController]
 [Route("api/track")]
+[EnableRateLimiting("Api")]
 public class TrackingController : ControllerBase
 {
     private readonly EmailSubscriber.API.Services.ITrackingService _trackingService;
@@ -16,9 +18,9 @@ public class TrackingController : ControllerBase
     }
 
     [HttpGet("open/{campaignId}/{subscriberId}")]
-    public async Task<IActionResult> TrackOpen(int campaignId, int subscriberId)
+    public async Task<IActionResult> TrackOpen(int campaignId, int subscriberId, [FromQuery] string? sig)
     {
-        await _trackingService.TrackOpenAsync(campaignId, subscriberId);
+        await _trackingService.TrackOpenAsync(campaignId, subscriberId, sig);
 
         // Return 1x1 transparent GIF
         var pixel = Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");

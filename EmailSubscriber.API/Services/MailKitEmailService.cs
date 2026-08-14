@@ -30,7 +30,7 @@ public class MailKitEmailService : IEmailService
             _logger.LogInformation("--- MOCK EMAIL START ---");
             _logger.LogInformation("To: {ToName} <{To}>", toName, to);
             _logger.LogInformation("Subject: {Subject}", subject);
-            _logger.LogInformation("Body: {HtmlBody}", htmlBody);
+            _logger.LogInformation("Body: [HTML Content - {Length} chars]", htmlBody.Length);
             _logger.LogInformation("--- MOCK EMAIL END ---");
             return;
         }

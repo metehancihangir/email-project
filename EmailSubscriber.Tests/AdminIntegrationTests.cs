@@ -24,7 +24,9 @@ public class AdminIntegrationTests : IClassFixture<WebApplicationFactory<Program
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" }
+                    { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" },
+                    { "Admin:Username", "admin" },
+                    { "Admin:PasswordHash", "$2a$11$iGiG4IPNiEuEqD1t9Lfmve/NNf2j9mndB3IyqjkSBKixqxYHEfgtC" }
                 });
             });
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axiosInstance';
 import { motion, AnimatePresence } from 'framer-motion';
+import DOMPurify from 'dompurify';
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState([]);
@@ -161,7 +162,7 @@ export default function CampaignsPage() {
                   <div 
                     className="bg-white shadow-sm" 
                     style={{ minWidth: '600px', maxWidth: '600px', minHeight: '400px' }}
-                    dangerouslySetInnerHTML={{ __html: campaignContent }} 
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(campaignContent) }} 
                   />
                 )}
               </div>

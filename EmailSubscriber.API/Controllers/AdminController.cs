@@ -2,11 +2,13 @@ using EmailSubscriber.API.DTOs;
 using EmailSubscriber.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EmailSubscriber.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("Api")]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
@@ -17,6 +19,7 @@ public class AdminController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting("Login")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -162,13 +165,16 @@ public class AdminController : ControllerBase
 
     [Authorize]
     [HttpPost("trigger-ai")]
-    public async Task<IActionResult> TriggerAINewsletter([FromQuery] string? category, [FromServices] IServiceProvider serviceProvider)
+    public IActionResult TriggerAINewsletter([FromQuery] string? category, [FromServices] IServiceProvider serviceProvider)
     {
         var hostedServices = serviceProvider.GetServices<Microsoft.Extensions.Hosting.IHostedService>();
         var aiJob = hostedServices.OfType<EmailSubscriber.API.Services.Jobs.AINewsletterJob>().FirstOrDefault();
 
         if (aiJob == null)
             return StatusCode(500, new { message = "AINewsletterJob bulunamadı." });
+
+        if (aiJob.IsRunning)
+            return Conflict(new { message = "Yapay zeka bülten üretimi zaten devam ediyor. Lütfen önceki işlemin tamamlanmasını bekleyin." });
 
         _ = Task.Run(async () =>
         {
