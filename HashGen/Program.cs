@@ -1,12 +1,32 @@
-using System;
+using System.Text;
 
-class Program
+Console.Write("Enter a new admin password (input hidden): ");
+var password = new StringBuilder();
+
+while (true)
 {
-    static void Main(string[] args)
+    var key = Console.ReadKey(intercept: true);
+    if (key.Key == ConsoleKey.Enter)
+        break;
+    if (key.Key == ConsoleKey.Backspace)
     {
-        string password = args.Length > 0 ? args[0] : "AdminPass2026!SecureKey#";
-        string hash = BCrypt.Net.BCrypt.HashPassword(password);
-        Console.WriteLine($"Password: {password}");
-        Console.WriteLine($"BCrypt Hash: {hash}");
+        if (password.Length > 0)
+            password.Length--;
+    }
+    else if (!char.IsControl(key.KeyChar))
+    {
+        password.Append(key.KeyChar);
     }
 }
+
+Console.WriteLine();
+if (password.Length < 12)
+{
+    Console.Error.WriteLine("Use a password with at least 12 characters.");
+    return 1;
+}
+
+// Only the hash is printed. Never log or embed the plaintext password.
+Console.WriteLine(BCrypt.Net.BCrypt.HashPassword(password.ToString()));
+password.Clear();
+return 0;

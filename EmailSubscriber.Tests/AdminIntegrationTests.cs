@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using System.Net.Http.Json;
 using EmailSubscriber.API.Data;
@@ -20,13 +21,18 @@ public class AdminIntegrationTests : IClassFixture<WebApplicationFactory<Program
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseEnvironment("Testing");
             builder.ConfigureAppConfiguration((context, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    { "Smtp:User", "" },
+                    { "Gemini:ApiKey", "" },
+                    { "Gemini:FallbackApiKey", "" },
+                    { "Jwt:Secret", TestConfiguration.JwtSecret },
                     { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" },
                     { "Admin:Username", "admin" },
-                    { "Admin:PasswordHash", "$2a$11$iGiG4IPNiEuEqD1t9Lfmve/NNf2j9mndB3IyqjkSBKixqxYHEfgtC" }
+                    { "Admin:PasswordHash", TestConfiguration.AdminPasswordHash }
                 });
             });
 
@@ -61,8 +67,8 @@ public class AdminIntegrationTests : IClassFixture<WebApplicationFactory<Program
     public async Task Post_Login_ValidCredentials_ReturnsOkWithToken() // 4.4.2
     {
         var client = _factory.CreateClient();
-        // Varsayılan appsettings içindeki şifre password123
-        var request = new LoginRequest("admin", "password123");
+        // Use credentials generated only for this test process.
+        var request = new LoginRequest("admin", TestConfiguration.AdminPassword);
         
         var response = await client.PostAsJsonAsync("/api/admin/login", request);
         
@@ -82,7 +88,7 @@ public class AdminIntegrationTests : IClassFixture<WebApplicationFactory<Program
 
     private async Task<string> GetValidTokenAsync(HttpClient client)
     {
-        var request = new LoginRequest("admin", "password123");
+        var request = new LoginRequest("admin", TestConfiguration.AdminPassword);
         var response = await client.PostAsJsonAsync("/api/admin/login", request);
         var content = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
         return content!["token"];

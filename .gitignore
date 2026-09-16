@@ -1,1 +1,21 @@
-HashGen/
+# Build and editor output can contain copies of local configuration.
+**/bin/
+**/obj/
+.vs/
+**/node_modules/
+**/dist/
+**/TestResults/
+*.user
+*.suo
+
+# Local secrets and environment overrides.
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+**/secrets.json
+*.pfx
+*.p12
+*.key
+*.pem

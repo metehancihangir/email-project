@@ -64,14 +64,15 @@ try
     });
 
     // ─── JWT Authentication ──────────────────────────────────────────────────
-    var jwtSecret = builder.Configuration["Jwt:Secret"];
-    if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
-    {
-        throw new InvalidOperationException("Jwt:Secret is not configured or is shorter than 32 characters (256-bit).");
-    }
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
+            // Resolve the final configuration, including test-host overrides.
+            var jwtSecret = builder.Configuration["Jwt:Secret"];
+            if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+            {
+                throw new InvalidOperationException("Jwt:Secret is not configured or is shorter than 32 characters (256-bit).");
+            }
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer           = true,
@@ -189,6 +190,10 @@ try
 
     // ─── Build App ───────────────────────────────────────────────────────────
     var app = builder.Build();
+
+    // Fail before serving requests when the external signing key is missing.
+    _ = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<JwtBearerOptions>>()
+        .Get(JwtBearerDefaults.AuthenticationScheme);
 
     app.UseForwardedHeaders();
     app.UseSerilogRequestLogging();

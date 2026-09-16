@@ -1,0 +1,16 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "appsettings-secret-value"
+description = "Non-empty credential in a tracked ASP.NET configuration file"
+path = '''(?i)(^|/)appsettings(?:\.[^/]+)?\.json$'''
+regex = '''"(?:Secret|Password|PasswordHash|ApiKey|FallbackApiKey)"\s*:\s*"([^"\r\n]+)"'''
+secretGroup = 1
+
+[[rules]]
+id = "appsettings-database-password"
+description = "Database password in a tracked ASP.NET connection string"
+path = '''(?i)(^|/)appsettings(?:\.[^/]+)?\.json$'''
+regex = '''(?i)(?:password|pwd)\s*=([^;"\r\n]+)'''
+secretGroup = 1

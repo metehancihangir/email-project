@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -21,10 +22,15 @@ public class TrackingIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseEnvironment("Testing");
             builder.ConfigureAppConfiguration((context, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    { "Smtp:User", "" },
+                    { "Gemini:ApiKey", "" },
+                    { "Gemini:FallbackApiKey", "" },
+                    { "Jwt:Secret", TestConfiguration.JwtSecret },
                     { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" }
                 });
             });

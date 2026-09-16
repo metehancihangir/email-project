@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -20,13 +21,18 @@ public class NewsletterIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseEnvironment("Testing");
             builder.ConfigureAppConfiguration((context, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    { "Smtp:User", "" },
+                    { "Gemini:ApiKey", "" },
+                    { "Gemini:FallbackApiKey", "" },
+                    { "Jwt:Secret", TestConfiguration.JwtSecret },
                     { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" },
                     { "Admin:Username", "admin" },
-                    { "Admin:PasswordHash", "$2a$11$iGiG4IPNiEuEqD1t9Lfmve/NNf2j9mndB3IyqjkSBKixqxYHEfgtC" }
+                    { "Admin:PasswordHash", TestConfiguration.AdminPasswordHash }
                 });
             });
 
@@ -48,7 +54,7 @@ public class NewsletterIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
     private async Task<string> GetValidTokenAsync(HttpClient client)
     {
-        var request = new LoginRequest("admin", "password123");
+        var request = new LoginRequest("admin", TestConfiguration.AdminPassword);
         var response = await client.PostAsJsonAsync("/api/admin/login", request);
         var content = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
         return content!["token"];

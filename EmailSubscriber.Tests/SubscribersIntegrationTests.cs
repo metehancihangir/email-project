@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using System.Net.Http.Json;
 using EmailSubscriber.API.Data;
@@ -20,12 +21,16 @@ public class SubscribersIntegrationTests : IClassFixture<WebApplicationFactory<P
         // In-memory database kullanarak WebApplicationFactory oluştur.
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseEnvironment("Testing");
             builder.ConfigureAppConfiguration((context, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    { "Smtp:User", "" },
+                    { "Gemini:ApiKey", "" },
+                    { "Gemini:FallbackApiKey", "" },
                     { "ConnectionStrings:Default", "Server=localhost;Database=dummy;Uid=root;Pwd=;" },
-                    { "Jwt:Secret", "SuperSecretJwtKeyForEmailSubscriberProject2026SecureKey!" }
+                    { "Jwt:Secret", TestConfiguration.JwtSecret }
                 });
             });
 
