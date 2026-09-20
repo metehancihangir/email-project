@@ -210,7 +210,10 @@ try
         context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
         context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
-        context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data: https:;";
+        var csp = app.Environment.IsDevelopment()
+            ? "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data: https:; connect-src 'self' ws: wss:;"
+            : "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data: https:;";
+        context.Response.Headers["Content-Security-Policy"] = csp;
         await next();
     });
 

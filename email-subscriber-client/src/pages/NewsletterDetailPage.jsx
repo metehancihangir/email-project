@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import axios from 'axios';
@@ -9,9 +9,23 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5117';
 
 export default function NewsletterDetailPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [newsletter, setNewsletter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [feedbackToast, setFeedbackToast] = useState(null); // 'ok' | 'negative' | null
+
+  useEffect(() => {
+    const feedback = searchParams.get('feedback');
+    if (feedback === 'ok' || feedback === 'negative') {
+      setFeedbackToast(feedback);
+      // URL'den parametreyi temizle — yenileme durumunda toast tekrar çıkmasın
+      window.history.replaceState({}, '', `/arsiv/${id}`);
+      // 5 saniye sonra toast'ı kaldır
+      const timer = setTimeout(() => setFeedbackToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, id]);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -52,6 +66,35 @@ export default function NewsletterDetailPage() {
   return (
     <div className="min-h-screen bg-auth-pattern bg-cover bg-center bg-no-repeat flex flex-col font-sans">
       <Navbar />
+
+      {/* Feedback Toast */}
+      {feedbackToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border text-sm font-semibold"
+          style={{
+            background: feedbackToast === 'ok' ? '#f0fdf4' : '#fffbeb',
+            borderColor: feedbackToast === 'ok' ? '#bbf7d0' : '#fde68a',
+            color: feedbackToast === 'ok' ? '#166534' : '#92400e',
+            animation: 'slideUpFade 0.35s ease',
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-xl">{feedbackToast === 'ok' ? '🙏' : '💡'}</span>
+          <span>
+            {feedbackToast === 'ok'
+              ? 'Geri bildiriminiz alındı! Bülteni beğendiğiniz için teşekkürler.'
+              : 'Geri bildiriminiz alındı! Bültenimizi geliştirmek için çalışacağız.'}
+          </span>
+          <button
+            onClick={() => setFeedbackToast(null)}
+            className="ml-2 opacity-50 hover:opacity-100 transition-opacity"
+            aria-label="Bildirimi kapat"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <motion.main 
         initial={{ opacity: 0, y: 25 }}
