@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Http.Timeouts;
 
 namespace EmailSubscriber.API.Controllers;
 
@@ -129,6 +131,7 @@ public class AdminController : ControllerBase
 
     [Authorize]
     [HttpPost("generate-draft")]
+    [RequestTimeout(120_000)] // AI taslak üretimi uzun sürebileceğinden 120 saniye timeout
     public async Task<IActionResult> GenerateDraft([FromQuery] string? category, [FromServices] IAIService aiService, [FromServices] AppDbContext context)
     {
         var selectedCategory = category ?? "Mitoloji";
@@ -144,6 +147,15 @@ public class AdminController : ControllerBase
 
             string pastTopicsStr = pastTopicsList.Any() ? string.Join(", ", pastTopicsList) : "Yok";
 
+            // Mitoloji kategorisinde aynı karakterin tekrar seçilmesini önlemek için karakter adlarını çıkar
+            string pastCharactersStr = string.Empty;
+            if (selectedCategory.Equals("Mitoloji", StringComparison.OrdinalIgnoreCase) && pastTopicsList.Any())
+            {
+                var characters = ExtractMythologyCharacters(pastTopicsList);
+                if (characters.Any())
+                    pastCharactersStr = string.Join(", ", characters);
+            }
+
             var draft = await aiService.GenerateNewsletterDraftAsync(selectedCategory, pastTopicsStr);
             return Ok(draft);
         }
@@ -154,6 +166,28 @@ public class AdminController : ControllerBase
                 message = "Yapay zeka taslak üretimi başarısız oldu. Lütfen API anahtarınızı ve Gemini model erişiminizi kontrol edip tekrar deneyin."
             });
         }
+    }
+
+    /// <summary>
+    /// Mitoloji bülten başlıklarından karakter adlarını çıkarır (AdminController'a özel kopya).
+    /// </summary>
+    private static List<string> ExtractMythologyCharacters(List<string> topics)
+    {
+        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "bir", "ve", "ile", "ya", "da", "de", "ki", "veya", "the", "of", "and",
+            "efsane", "efsanesi", "hikaye", "hikayesi", "mit", "miti", "tanrı", "tanrıça",
+            "sırı", "sırrı", "dünyası", "kökeni", "kök", "efsanevi", "gücü", "laneti"
+        };
+
+        return topics
+            .SelectMany(t => t.Split(new[] { ' ', '-', '\'', ',', '.', ':', '!', '?' }, StringSplitOptions.RemoveEmptyEntries))
+            .Where(w => w.Length >= 3 && char.IsUpper(w[0]) && !stopWords.Contains(w))
+            .GroupBy(w => w, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .Take(15)
+            .ToList();
     }
 
     [Authorize]

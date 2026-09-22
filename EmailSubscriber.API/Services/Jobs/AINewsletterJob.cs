@@ -113,10 +113,20 @@ public class AINewsletterJob : BackgroundService
 
             string pastTopicsStr = pastTopicsList.Any() ? string.Join(", ", pastTopicsList) : "Yok";
 
-            _logger.LogInformation("Yapay Zeka'ya {Category} kategorisinde istek atılıyor. Geçmiş konular: {Past}", category, pastTopicsStr);
+            // Mitoloji kategorisinde aynı karakterin tekrar seçilmesini önlemek için
+            // geçmiş bülten başlıklarından karakter/tanrı adlarını çıkarıyoruz.
+            string pastCharactersStr = string.Empty;
+            if (category.Equals("Mitoloji", StringComparison.OrdinalIgnoreCase) && pastTopicsList.Any())
+            {
+                var characters = ExtractCharacterNames(pastTopicsList);
+                if (characters.Any())
+                    pastCharactersStr = string.Join(", ", characters);
+            }
+
+            _logger.LogInformation("Yapay Zeka'ya {Category} kategorisinde istek atılıyor. Geçmiş konular: {Past} | Geçmiş karakterler: {Chars}", category, pastTopicsStr, pastCharactersStr);
 
             // AI İçerik Üretimi
-            string htmlContent = await aiService.GenerateNewsletterAsync(category, pastTopicsStr);
+            string htmlContent = await aiService.GenerateNewsletterAsync(category, pastTopicsStr, pastCharactersStr);
             
             // Güvenlik: Gemini bazen HTML yerine Markdown (**) kullanmakta israr edebiliyor.
             // E-posta içerisinde ** (çift yıldız) görünmemesi için bunları <b> etiketine çeviriyoruz.
@@ -186,5 +196,46 @@ public class AINewsletterJob : BackgroundService
         {
             _executionLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Mitoloji bülten başlıklarından tekrar eden karakterleri/tanrı isimlerini çıkarır.
+    /// Örneğin: "Odin'in Kargaları" -> "Odin", "Zeus ve Hera" -> "Zeus", "Hera"
+    /// </summary>
+    private static List<string> ExtractCharacterNames(List<string> topics)
+    {
+        var characterCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        // Mitoloji dünyasında sık geçen bülten "dolgu" kelimeleri — bunlar karakter adı değil
+        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "bir", "ve", "ile", "ya", "da", "de", "ki", "veya", "the", "of", "and",
+            "efsane", "efsanesi", "hikaye", "hikayesi", "mit", "miti", "tanrı", "tanrıça",
+            "sırı", "sırrı", "dünyası", "kökeni", "kök", "efsanevi", "gücü", "laneti",
+            "savaşçı", "kahramanları", "efendisi", "kralı", "kraliçesi", "dönemi"
+        };
+
+        foreach (var topic in topics)
+        {
+            // Apostrof ve tirelerle ayrılan kelimeleri böl
+            var words = topic.Split(new[] { ' ', '-', '\'', ',', '.', ':', '!', '?' },
+                                    StringSplitOptions.RemoveEmptyEntries);
+            foreach (var word in words)
+            {
+                // Büyük harfle başlayan, en az 3 karakter, stop-word olmayan kelimeler karakter adı adaylarıdır
+                if (word.Length >= 3 && char.IsUpper(word[0]) && !stopWords.Contains(word))
+                {
+                    characterCounts.TryGetValue(word, out int count);
+                    characterCounts[word] = count + 1;
+                }
+            }
+        }
+
+        // En az 1 kez geçen adayları döndür (bir kez bile görünmesi bile tekrar sayılır)
+        return characterCounts
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => kv.Key)
+            .Take(15) // Listeyi makul tutuyoruz
+            .ToList();
     }
 }
