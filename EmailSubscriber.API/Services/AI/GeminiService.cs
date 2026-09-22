@@ -34,7 +34,7 @@ public class GeminiService : IAIService
         _logger = logger;
     }
 
-    public async Task<string> GenerateNewsletterAsync(string category, string pastTopics)
+    public async Task<string> GenerateNewsletterAsync(string category, string pastTopics, string pastCharacters = "")
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
@@ -47,13 +47,17 @@ public class GeminiService : IAIService
         switch (category.ToLowerInvariant())
         {
             case "mitoloji":
+                var characterDiversityWarning = !string.IsNullOrWhiteSpace(pastCharacters)
+                    ? $"\n5. KARAKTERLERİ ÇEŞİTLENDİR: Daha önce konu olan şu karakterleri/tanrıları bülteninin ODAK NOKTASI yapma: [{pastCharacters}]. Bu listedeki karakterlerden birini ANA karakter olarak seçmek KESİNLİKLE YASAK. Tamamen farklı bir mitolojik figür, az bilinen bir efsane kahramanı veya farklı bir mitoloji sistemi seç."
+                    : "";
+
                 systemPrompt = $@"Sen uzman, akıcı ve sade bir dille yazan bir Mitoloji Bülteni yazarı/editörüsün. Görevin, karmaşık mitolojik hikayeleri, karakter ilişkilerini ve efsaneleri modern bir okuyucu için basitleştirerek anlatmaktır. 
 
 ÖZEL TALİMATLAR:
 1. Özellikle Yunan, Roma, İskandinav veya Mısır mitolojisi işlerken karakterlerin soyağaçlarında kaybolma. Ana hikayeye, sembolizme ve ana karaktere odaklan.
 2. Vurgulama Kuralları: Önemli karakter adlarını, mitolojik eşyaları ve mekanları HTML <b> etiketi kullanarak kalın (bold) font ile yaz. KESİNLİKLE MARKDOWN (**) KULLANMA. Geri kalan metin normal olmalı.
 3. Dilin akademik değil, hikaye anlatıcısı tadında ama net ve sade olmalı.
-4. Kaynakça (URL) verirken KESİNLİKLE uydurma (hallucinated) linkler kullanma. Sadece gerçekliğinden emin olduğun, konuyla ilgili Wikipedia sayfalarının linklerini (örn: https://tr.wikipedia.org/wiki/Zeus) kullan ve `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap.
+4. Kaynakça (URL) verirken KESİNLİKLE uydurma (hallucinated) linkler kullanma. Sadece gerçekliğinden emin olduğun, konuyla ilgili Wikipedia sayfalarının linklerini (örn: https://tr.wikipedia.org/wiki/Zeus) kullan ve `<a href=""URL"">Kaynak Adı</a>` formatında tıklanabilir link yap.{characterDiversityWarning}
 
 Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> vb.) olarak ver, markdown (```html) KULLANMA:
 
@@ -82,12 +86,15 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
 
             case "finans":
                 var newsContext = await GetLatestFinanceNewsAsync();
+                var financeFallbackNote = string.IsNullOrWhiteSpace(newsContext)
+                    ? "\nNOT: Güncel haber akışı şu an alınamadı. Kendi bilgi tabanındaki en güncel, doğrulanmış ve önemli bir finans veya piyasa gelişmesini seç. Uydurma haber veya link KULLANMA."
+                    : string.Empty;
 
                 systemPrompt = $@"Sen uzman, objektif ve sade bir dille yazan bir Finans ve Piyasa Bülteni editörüsün. Görevin, borsa endeksleri, hisse senedi hareketleri ve makroekonomik verileri okuyucuyu yormadan, hap bilgiler şeklinde sunmaktır. Asla yatırım tavsiyesi verme.
 
 Aşağıda bugün piyasalarda olan en güncel ve gerçek haberler verilmiştir. BÜLTENİ KESİNLİKLE BU HABERLERİ BAZ ALARAK VE YORUMLAYARAK YAZ:
 
-{newsContext}
+{newsContext}{financeFallbackNote}
 
 ÖZEL TALİMATLAR:
 1. BIST, Nasdaq gibi endekslerdeki hareketleri, kısa vadeli piyasa dinamiklerini veya belirli sektörlerdeki güncel trendleri yorumlarken finansal jargonu minimumda tut. 
@@ -115,18 +122,21 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
 <hr />
 <h3>Kaynakça</h3>
 <ul>
-<li><a href=""[Gerçek Kaynak Linki 1]"">[Haberin alındığı platform/kurum]</a></li>
-<li><a href=""[Gerçek Kaynak Linki 2]"">[İkinci Kaynak/Rapor]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 1]"">[ Haberin alındığı platform/kurum]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 2]"">[ İkinci Kaynak/Rapor]</a></li>
 </ul>";
                 break;
 
             case "bilim":
                 var scienceContext = await GetLatestScienceNewsAsync();
+                var scienceFallbackNote = string.IsNullOrWhiteSpace(scienceContext)
+                    ? "\nNOT: Güncel haber akışı şu an alınamadı. Kendi bilgi tabanındaki en güncel, doğrulanmış ve önemli bir bilim veya teknoloji gelişmesini seç. Uydurma haber veya link KULLANMA."
+                    : string.Empty;
                 systemPrompt = $@"Sen uzman, yenilikçi ve sade bir dille yazan bir Bilim ve Teknoloji Bülteni editörüsün. Görevin, yeni bilimsel keşifleri, yazılım dünyasındaki gelişmeleri veya mühendislik başarılarını herkesin anlayabileceği bir netlikte açıklamaktır.
 
 Aşağıda bugün bilim ve teknoloji dünyasında olan en güncel haberler verilmiştir. BÜLTENİ KESİNLİKLE BU HABERLERİ BAZ ALARAK VE YORUMLAYARAK YAZ:
 
-{scienceContext}
+{scienceContext}{scienceFallbackNote}
 
 ÖZEL TALİMATLAR:
 1. Karmaşık algoritmaları, yeni nesil teknolojileri (yapay zeka, yazılım mimarileri vb.) veya temel bilimsel keşifleri anlatırken teknik boğuculuktan kaçın. Gerekirse günlük hayattan sade analojiler kullan.
@@ -154,8 +164,8 @@ Aşağıdaki şablonu KESİNLİKLE birebir uygula ve saf HTML (<div>, <p>, <h2> 
 <hr />
 <h3>Kaynakça</h3>
 <ul>
-<li><a href=""[Gerçek Kaynak Linki 1]"">[Haberin alındığı platform/kurum]</a></li>
-<li><a href=""[Gerçek Kaynak Linki 2]"">[İkinci Kaynak/Rapor]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 1]"">[ Haberin alındığı platform/kurum]</a></li>
+<li><a href=""[Gerçek Kaynak Linki 2]"">[ İkinci Kaynak/Rapor]</a></li>
 </ul>";
                 break;
 
@@ -205,7 +215,10 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
                 break;
         }
 
-        var fullInstruction = systemPrompt + $"\n\nUYARI: Daha önce işlenen şu konulardan KESİNLİKLE UZAK DUR: {pastTopics}\nLütfen yeni bülteni hemen yukarıdaki şablona göre HTML formatında oluştur.";
+        var pastCharacterWarning = !string.IsNullOrWhiteSpace(pastCharacters)
+            ? $"\nAYRICA: Şu karakter/figürler son bültenlerde yer aldığı için ANA karakter olarak KESİNLİKLE KULLANMA: [{pastCharacters}]"
+            : string.Empty;
+        var fullInstruction = systemPrompt + $"\n\nUYARI: Daha önce işlenen şu konulardan KESİNLİKLE UZAK DUR: {pastTopics}{pastCharacterWarning}\nLütfen yeni bülteni hemen yukarıdaki şablona göre HTML formatında oluştur.";
 
         try
         {
@@ -837,7 +850,7 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
         {
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
                 var response = await _httpClient.GetStringAsync(rssUrl, cts.Token);
                 var doc = XDocument.Parse(response);
                 var items = doc.Descendants("item").Take(3);
@@ -869,9 +882,12 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
     {
         var sb = new StringBuilder();
         sb.AppendLine("GÜNCEL EKONOMİ VE PİYASA HABERLERİ:");
+        // BloombergHT Cloudflare koruması nedeniyle zaman aşımına uğrayabildiğinden
+        // daha erişilebilir ve güvenilir RSS kaynakları kullanılmaktadır.
         await AppendRssItemsAsync(sb, new[]
         {
-            "https://www.bloomberght.com/rss",
+            "https://feeds.bbci.co.uk/turkce/ekonomi/rss.xml",
+            "https://www.haberturk.com/rss/ekonomi.xml",
             "https://www.dunya.com/rss"
         });
         return sb.Length > 40 ? sb.ToString() : string.Empty;
@@ -897,7 +913,8 @@ Görevin: Bu kategori hakkında daha önce anlatmadığın, çok ilginç ve okuy
         await AppendRssItemsAsync(sb, new[]
         {
             "https://evrimagaci.org/rss.xml",
-            "https://www.webtekno.com/rss.xml"
+            "https://www.webtekno.com/rss.xml",
+            "https://shiftdelete.net/feed"
         });
         return sb.Length > 40 ? sb.ToString() : string.Empty;
     }

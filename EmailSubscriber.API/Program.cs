@@ -147,6 +147,16 @@ try
         };
     });
 
+    // ─── Request Timeout ─────────────────────────────────────────────────────
+    // Varsayılan timeout 60 saniye; AI draft endpoint'i kendi attribute'u ile 120s'ye çıkarıyor.
+    builder.Services.AddRequestTimeouts(options =>
+    {
+        options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy
+        {
+            Timeout = TimeSpan.FromSeconds(60)
+        };
+    });
+
     builder.Services.AddSingleton<EmailSubscriber.API.Queue.IEmailQueueService, EmailSubscriber.API.Queue.EmailQueueService>();
     builder.Services.AddHostedService<EmailSubscriber.API.Queue.EmailWorker>();
     builder.Services.AddHostedService<EmailSubscriber.API.Services.Jobs.AINewsletterJob>();
@@ -231,6 +241,7 @@ try
 
     app.UseRouting();
     app.UseCors("FrontendPolicy");
+    app.UseRequestTimeouts(); // RequestTimeout attribute'larinin çalışması için gerekli
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
